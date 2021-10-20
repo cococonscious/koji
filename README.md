@@ -14,7 +14,7 @@
 
 ## Installation
 
-Not yet. 😔
+Check the [releases](https://github.com/its-danny/koji/releases) page to download koji for your platform.
 
 ## Usage
 
