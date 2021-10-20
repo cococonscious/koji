@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🦊 koji</h1>
 
-  An interactive cli for creating [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/),
+  An interactive CLI for creating [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/),
   built on [cocogitto](https://github.com/oknozor/cocogitto) and inspired by
   [cz-cli](https://github.com/commitizen/cz-cli).
 
