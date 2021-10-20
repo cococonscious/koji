@@ -7,6 +7,7 @@
 
   ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/its-danny/koji/CI)
   ![Current Release](https://img.shields.io/github/v/release/its-danny/koji)
+  [![Dependency Status](https://deps.rs/repo/github/its-danny/koji/status.svg)](https://deps.rs/repo/github/its-danny/koji)
   [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-pink.svg)](https://conventionalcommits.org)
   [![License](https://img.shields.io/github/license/oknozor/cocogitto)](LICENSE)
 
