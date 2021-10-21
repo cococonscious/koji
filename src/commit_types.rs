@@ -1,5 +1,5 @@
 use linked_hash_map::LinkedHashMap;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 
 use crate::config::Config;
 
