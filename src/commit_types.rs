@@ -1,13 +1,8 @@
-use std::{fs, path::Path};
-
-use anyhow::{Context, Error, Result};
+use anyhow::{Error, Result};
 use linked_hash_map::LinkedHashMap;
 use serde_derive::Deserialize;
 
-#[derive(Clone, Deserialize)]
-struct Config {
-    commit_types: Vec<CommitType>,
-}
+use crate::config::Config;
 
 #[derive(Clone, Deserialize)]
 pub struct CommitType {
@@ -16,16 +11,10 @@ pub struct CommitType {
     pub description: String,
 }
 
-pub fn config_file_exists() -> bool {
-    Path::new("koji.toml").exists()
-}
-
-pub fn get_custom_commit_types() -> Result<LinkedHashMap<String, CommitType>, Error> {
-    let file = fs::read_to_string("koji.toml").context("reading config file")?;
-    let parsed: Config = toml::from_str(file.as_ref()).context("parsing config file")?;
+pub fn get_custom_commit_types(config: Config) -> Result<LinkedHashMap<String, CommitType>, Error> {
     let mut map = LinkedHashMap::new();
 
-    for commit_type in parsed.commit_types.iter() {
+    for commit_type in config.commit_types.iter() {
         map.insert(commit_type.name.to_owned(), commit_type.to_owned());
     }
 

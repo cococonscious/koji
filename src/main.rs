@@ -1,8 +1,8 @@
 mod commit_types;
+mod config;
 
-use commit_types::{
-    config_file_exists, get_custom_commit_types, get_default_commit_types, CommitType,
-};
+use crate::commit_types::{get_custom_commit_types, get_default_commit_types, CommitType};
+use crate::config::get_config;
 
 use anyhow::{Context, Error, Result};
 use clap::{crate_authors, crate_version, App, Arg};
@@ -154,8 +154,8 @@ fn get_amended_body(
 }
 
 fn main() -> Result<()> {
-    let commit_types = if config_file_exists() {
-        get_custom_commit_types().unwrap()
+    let commit_types = if let Ok(config) = get_config() {
+        get_custom_commit_types(config).unwrap()
     } else {
         get_default_commit_types()
     };
