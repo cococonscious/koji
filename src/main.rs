@@ -2,7 +2,7 @@ mod commit_types;
 mod config;
 
 use crate::commit_types::{get_custom_commit_types, get_default_commit_types, CommitType};
-use crate::config::get_config;
+use crate::config::{config_exists, get_config};
 
 use anyhow::{Context, Error, Result};
 use clap::{crate_authors, crate_version, App, Arg};
@@ -154,11 +154,13 @@ fn get_amended_body(
 }
 
 fn main() -> Result<()> {
-    let commit_types = if let Ok(config) = get_config() {
-        get_custom_commit_types(config).unwrap()
+    let commit_types: LinkedHashMap<String, CommitType>;
+
+    if config_exists() {
+        commit_types = get_custom_commit_types(get_config()?);
     } else {
-        get_default_commit_types()
-    };
+        commit_types = get_default_commit_types();
+    }
 
     let matches = App::new("koji")
         .about("An interactive CLI for creating conventional commits.")

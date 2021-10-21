@@ -1,4 +1,3 @@
-use anyhow::{Error, Result};
 use linked_hash_map::LinkedHashMap;
 use serde_derive::Deserialize;
 
@@ -11,14 +10,14 @@ pub struct CommitType {
     pub description: String,
 }
 
-pub fn get_custom_commit_types(config: Config) -> Result<LinkedHashMap<String, CommitType>, Error> {
+pub fn get_custom_commit_types(config: Config) -> LinkedHashMap<String, CommitType> {
     let mut map = LinkedHashMap::new();
 
     for commit_type in config.commit_types.iter() {
         map.insert(commit_type.name.to_owned(), commit_type.to_owned());
     }
 
-    Ok(map)
+    map
 }
 
 pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
