@@ -246,7 +246,7 @@ mod tests {
             render_commit_type_choice(false, commit_types.get("refactor").unwrap(), &commit_types);
         assert_eq!(
             choice,
-            "refactor:   A change that neither fixes a bug or adds a feature"
+            "refactor:   A code change that neither fixes a bug nor adds a feature"
         );
 
         let choice =
@@ -260,7 +260,7 @@ mod tests {
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
         assert_eq!(
             choice,
-            "refactor:   🔨 A change that neither fixes a bug or adds a feature"
+            "refactor:   🔨 A code change that neither fixes a bug nor adds a feature"
         );
 
         let choice =

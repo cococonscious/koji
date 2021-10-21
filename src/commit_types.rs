@@ -60,14 +60,14 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             CommitType {
                 name: "refactor".into(),
                 emoji: "🔨".into(),
-                description: "A change that neither fixes a bug or adds a feature".into(),
+                description: "A code change that neither fixes a bug nor adds a feature".into(),
             },
         ),
         (
             "perf".into(),
             CommitType {
                 name: "perf".into(),
-                emoji: "🚀".into(),
+                emoji: "⚡".into(),
                 description: "A code change that improves performance".into(),
             },
         ),

@@ -33,4 +33,4 @@ koji -e # or, --emoji
 ### Add custom commit types
 
 You can add custom commit types via a `koji.toml` file in the working directory.
-An example can be found [here](https://github.com/its-danny/koji/blob/main/meta/koji.toml).
+Some examples can be found [here](https://github.com/its-danny/koji/blob/main/meta/config).

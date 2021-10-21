@@ -1,9 +1,0 @@
-[[commit_types]]
-name = "neigh"
-emoji = "🐴"
-description = "It's horse code!"
-
-[[commit_types]]
-name = "moo"
-emoji = "🐮"
-description = "It's for cows!"
