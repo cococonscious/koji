@@ -2,6 +2,42 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.1.0 - 2021-10-21
+
+
+### Refactoring
+
+66c68d - remove unnecessary `Error`s from `Result`s - Danny Tatom
+
+f3a875 - little bit of some cleanup - Danny Tatom
+
+a93fc3 - put config file handling into its own file - Danny Tatom
+
+
+### Features
+
+ef923a - add validation to questions - Danny Tatom
+
+
+### Documentation
+
+d6cab7 - add better config examples - Danny Tatom
+
+72450e - add deps.rs badge - Danny Tatom
+
+468682 - add version badge - Danny
+
+afcfe2 - capitalize cli - Danny Tatom
+
+18cfcb - add link to releases page - Danny Tatom
+
+
+### Miscellaneous Chores
+
+9984fd - add issue templates - Danny
+
+
+- - -
 ## 1.0.0 - 2021-10-20
 
 
