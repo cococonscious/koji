@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use serde_derive::Deserialize;
 use std::{fs, path::Path};
 
@@ -13,7 +13,7 @@ pub fn config_exists() -> bool {
     Path::new("koji.toml").exists()
 }
 
-pub fn get_config() -> Result<Config, Error> {
+pub fn get_config() -> Result<Config> {
     let file = fs::read_to_string("koji.toml").context("reading config file")?;
     let parsed: Config = toml::from_str(file.as_ref()).context("parsing config file")?;
 

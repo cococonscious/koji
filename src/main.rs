@@ -4,7 +4,7 @@ mod config;
 use crate::commit_types::{get_custom_commit_types, get_default_commit_types, CommitType};
 use crate::config::{config_exists, get_config};
 
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use cocogitto::CocoGitto;
 use linked_hash_map::LinkedHashMap;
@@ -43,7 +43,7 @@ fn render_commit_type_choice(
 
 /// Parse the commit type out of the menu choice.
 /// e.g. `feat: A new feature` -> `feat`
-fn get_commit_type(answer: Option<&Answer>) -> Result<&str, Error> {
+fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
     answer
         .context("could not get commit type")?
         .as_list_item()
@@ -55,7 +55,7 @@ fn get_commit_type(answer: Option<&Answer>) -> Result<&str, Error> {
 }
 
 /// Gets the scope, returning `None` if it's an empty string.
-fn get_scope(answer: Option<&Answer>) -> Result<Option<String>, Error> {
+fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get scope")?
         .as_string()
@@ -69,7 +69,7 @@ fn get_summary(
     use_emoji: bool,
     commit_type: &str,
     commit_types: &LinkedHashMap<String, CommitType>,
-) -> Result<String, Error> {
+) -> Result<String> {
     answer
         .context("could not get summary")?
         .as_string()
@@ -84,7 +84,7 @@ fn get_summary(
 }
 
 /// Gets the body, returning `None` if it's an empty string.
-fn get_body(answer: Option<&Answer>) -> Result<Option<String>, Error> {
+fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get body")?
         .as_string()
@@ -93,7 +93,7 @@ fn get_body(answer: Option<&Answer>) -> Result<Option<String>, Error> {
 }
 
 // Returns whether or not there's a breaking change.
-fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool, Error> {
+fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get breaking change")?
         .as_bool()
@@ -101,7 +101,7 @@ fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool, Error> {
 }
 
 /// Returns whether or not there's an open issue.
-fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool, Error> {
+fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get open issue")?
         .as_bool()
@@ -110,10 +110,7 @@ fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool, Error> {
 
 /// Get the issue reference, returning `None` if there isn't
 /// an open issue.
-fn get_issue_reference(
-    answer: Option<&Answer>,
-    has_open_issue: bool,
-) -> Result<Option<String>, Error> {
+fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<Option<String>> {
     if has_open_issue {
         answer
             .context("could not get issue reference")?
@@ -130,7 +127,7 @@ fn get_issue_reference(
 fn get_amended_body(
     body: &Option<String>,
     issue_reference: &Option<String>,
-) -> Result<Option<String>, Error> {
+) -> Result<Option<String>> {
     match body {
         Some(body) => {
             if issue_reference.is_some() {
