@@ -191,6 +191,13 @@ fn main() -> Result<()> {
             .build(),
         Question::input("summary")
             .message("Write a short, imperative tense description of the change.")
+            .validate(|summary, _| {
+                if !summary.is_empty() {
+                    Ok(())
+                } else {
+                    Err("A description is required.".into())
+                }
+            })
             .build(),
         Question::input("body")
             .message("Provide a longer description of the change. (press enter to skip)")
@@ -206,6 +213,16 @@ fn main() -> Result<()> {
             .when(|answers: &Answers| match answers.get("has_open_issue") {
                 Some(a) => a.as_bool().unwrap(),
                 None => false,
+            })
+            .validate(|issue_reference, _| {
+                if !issue_reference.is_empty() {
+                    Ok(())
+                } else {
+                    Err(
+                        "An issue reference is required if this commit is related to an open issue."
+                            .into(),
+                    )
+                }
             })
             .build(),
     ])?;
