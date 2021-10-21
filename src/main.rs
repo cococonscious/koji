@@ -136,6 +136,15 @@ fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> 
     }
 }
 
+const ARG_EMOJI: &str = "emoji";
+const Q_COMMIT_TYPE: &str = "commit_type";
+const Q_SCOPE: &str = "scope";
+const Q_SUMMARY: &str = "summary";
+const Q_BODY: &str = "body";
+const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
+const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
+const Q_ISSUE_REFERENCE: &str = "issue_reference";
+
 fn main() -> Result<()> {
     let commit_types = if let Some(config) = load_config()? {
         get_custom_commit_types(config)
@@ -148,17 +157,17 @@ fn main() -> Result<()> {
         .version(crate_version!())
         .author(crate_authors!())
         .arg(
-            Arg::with_name("emoji")
+            Arg::with_name(ARG_EMOJI)
                 .short("e")
                 .long("emoji")
                 .help("Prepend summary with relevant emoji based on commit type."),
         )
         .get_matches();
 
-    let use_emoji = matches.is_present("emoji");
+    let use_emoji = matches.is_present(ARG_EMOJI);
 
     let answers = prompt(vec![
-        Question::select("commit_type")
+        Question::select(Q_COMMIT_TYPE)
             .message("What type of change are you committing?")
             .page_size(8)
             .transform(|choice, _, backend| {
@@ -170,10 +179,10 @@ fn main() -> Result<()> {
                     .map(|(_, t)| render_commit_type_choice(use_emoji, t, &commit_types)),
             )
             .build(),
-        Question::input("scope")
+        Question::input(Q_SCOPE)
             .message("What is the scope of this change? (press enter to skip)")
             .build(),
-        Question::input("summary")
+        Question::input(Q_SUMMARY)
             .message("Write a short, imperative tense description of the change.")
             .validate(|summary, _| {
                 if !summary.is_empty() {
@@ -183,18 +192,18 @@ fn main() -> Result<()> {
                 }
             })
             .build(),
-        Question::input("body")
+        Question::input(Q_BODY)
             .message("Provide a longer description of the change. (press enter to skip)")
             .build(),
-        Question::confirm("is_breaking_change")
+        Question::confirm(Q_IS_BREAKING_CHANGE)
             .message("Are there any breaking changes?")
             .build(),
-        Question::confirm("has_open_issue")
+        Question::confirm(Q_HAS_OPEN_ISSUE)
             .message("Does this change affect any open issues?")
             .build(),
-        Question::input("issue_reference")
+        Question::input(Q_ISSUE_REFERENCE)
             .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
-            .when(|answers: &Answers| match answers.get("has_open_issue") {
+            .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
                 Some(a) => a.as_bool().unwrap(),
                 None => false,
             })
@@ -211,18 +220,18 @@ fn main() -> Result<()> {
             .build(),
     ])?;
 
-    let commit_type = get_commit_type(answers.get("commit_type"))?;
-    let scope = get_scope(answers.get("scope"))?;
+    let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?;
+    let scope = get_scope(answers.get(Q_SCOPE))?;
     let summary = get_summary(
-        answers.get("summary"),
+        answers.get(Q_SUMMARY),
         use_emoji,
         commit_type,
         &commit_types,
     )?;
-    let body = get_body(answers.get("body"))?;
-    let is_breaking_change = get_is_breaking_change(answers.get("is_breaking_change"))?;
-    let has_open_issue = get_has_open_issue(answers.get("has_open_issue"))?;
-    let issue_reference = get_issue_reference(answers.get("issue_reference"), has_open_issue)?;
+    let body = get_body(answers.get(Q_BODY))?;
+    let is_breaking_change = get_is_breaking_change(answers.get(Q_IS_BREAKING_CHANGE))?;
+    let has_open_issue = get_has_open_issue(answers.get(Q_HAS_OPEN_ISSUE))?;
+    let issue_reference = get_issue_reference(answers.get(Q_ISSUE_REFERENCE), has_open_issue)?;
     let body = get_amended_body(&body, &issue_reference);
 
     let cocogitto = CocoGitto::get()?;
