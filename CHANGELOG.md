@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.1.2 - 2021-10-21
+
+
+### Continuous Integration
+
+87bef9 - maybe fix build - Danny Tatom
+
+
+- - -
 ## 1.1.1 - 2021-10-21
 
 
