@@ -22,23 +22,24 @@ fn render_commit_type_choice(
     commit_type: &CommitType,
     commit_types: &LinkedHashMap<String, CommitType>,
 ) -> String {
-    format!(
-        "{}:{:>width$}{}",
-        commit_type.name,
-        if use_emoji {
-            format!("{} ", commit_type.emoji)
-        } else {
-            "".into()
-        },
-        commit_type.description,
-        width = commit_types
-            .iter()
-            .map(|(key, _)| key.chars().count())
-            .max()
-            .unwrap()
-            - commit_type.name.chars().count()
-            + if use_emoji { 5 } else { 3 },
-    )
+    let name = &commit_type.name;
+    let description = &commit_type.description;
+
+    let emoji = if use_emoji {
+        format!("{} ", commit_type.emoji)
+    } else {
+        "".into()
+    };
+
+    let width = commit_types
+        .iter()
+        .map(|(key, _)| key.chars().count())
+        .max()
+        .unwrap()
+        - commit_type.name.chars().count()
+        + if use_emoji { 5 } else { 3 };
+
+    format!("{}:{:>width$}{}", name, emoji, description, width = width)
 }
 
 /// Parse the commit type out of the menu choice.
