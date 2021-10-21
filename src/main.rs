@@ -125,29 +125,14 @@ fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<
 
 /// If there is a referenced issue, we want to return a new string
 /// appending it to the body. If not, just give back the body.
-fn get_amended_body(
-    body: &Option<String>,
-    issue_reference: &Option<String>,
-) -> Result<Option<String>> {
-    match body {
-        Some(body) => {
-            if issue_reference.is_some() {
-                Ok(Some(format!(
-                    "{}\n\n{}",
-                    body,
-                    issue_reference.to_owned().unwrap()
-                )))
-            } else {
-                Ok(Some(body.to_owned()))
-            }
+fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
+    match (body, issue_reference) {
+        (Some(body), Some(issue_reference)) => {
+            Some(format!("{}\n\n{}", body, issue_reference.to_owned()))
         }
-        None => {
-            if issue_reference.is_some() {
-                Ok(issue_reference.to_owned())
-            } else {
-                Ok(None)
-            }
-        }
+        (Some(body), None) => Some(body.into()),
+        (None, Some(issue_reference)) => Some(issue_reference.to_owned()),
+        (None, None) => None,
     }
 }
 
@@ -240,7 +225,7 @@ fn main() -> Result<()> {
     let is_breaking_change = get_is_breaking_change(answers.get("is_breaking_change"))?;
     let has_open_issue = get_has_open_issue(answers.get("has_open_issue"))?;
     let issue_reference = get_issue_reference(answers.get("issue_reference"), has_open_issue)?;
-    let body = get_amended_body(&body, &issue_reference)?;
+    let body = get_amended_body(&body, &issue_reference);
 
     let cocogitto = CocoGitto::get()?;
 
@@ -363,17 +348,23 @@ mod tests {
     #[test]
     fn test_get_amended_body() {
         let body = Some("i _really_ like badges".to_string());
-
-        assert_eq!(
-            get_amended_body(&body, &None).unwrap(),
-            Some("i _really_ like badges".into())
-        );
-
         let issue_reference = Some("closes #1".to_string());
 
         assert_eq!(
-            get_amended_body(&body, &issue_reference).unwrap(),
+            get_amended_body(&body, &issue_reference),
             Some("i _really_ like badges\n\ncloses #1".into())
         );
+
+        assert_eq!(
+            get_amended_body(&body, &None),
+            Some("i _really_ like badges".into())
+        );
+
+        assert_eq!(
+            get_amended_body(&None, &issue_reference),
+            Some("closes #1".into())
+        );
+
+        assert_eq!(get_amended_body(&None, &None), None);
     }
 }
