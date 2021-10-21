@@ -2,6 +2,37 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.1.1 - 2021-10-21
+
+
+### Miscellaneous Chores
+
+15e89b - remove cargo-bump - Danny Tatom
+
+76ca7f - set rust edition to 2021 - Danny Tatom
+
+
+### Build system
+
+286e83 - make release bin smaller - Danny Tatom
+
+f977bb - get derive as a feature from serde - Danny Tatom
+
+
+### Refactoring
+
+9d3e12 - move answer functions to their own file - Danny Tatom
+
+bc8aae - use const strings for answer keys - Danny Tatom
+
+ce90dd - replace config loading with a single load_config function - Danny Tatom
+
+dc718a - clean up get_amended_body - Danny Tatom
+
+aee814 - clean up render_commit_type_choice - Danny Tatom
+
+
+- - -
 ## 1.1.0 - 2021-10-21
 
 
