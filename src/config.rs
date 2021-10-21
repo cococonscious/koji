@@ -9,13 +9,13 @@ pub struct Config {
     pub commit_types: Vec<CommitType>,
 }
 
-pub fn config_exists() -> bool {
-    Path::new("koji.toml").exists()
-}
+pub fn load_config() -> Result<Option<Config>> {
+    if Path::new("koji.toml").exists() {
+        let file = fs::read_to_string("koji.toml").context("reading config file")?;
+        let parsed: Config = toml::from_str(file.as_ref()).context("parsing config file")?;
 
-pub fn get_config() -> Result<Config> {
-    let file = fs::read_to_string("koji.toml").context("reading config file")?;
-    let parsed: Config = toml::from_str(file.as_ref()).context("parsing config file")?;
-
-    Ok(parsed)
+        Ok(Some(parsed))
+    } else {
+        Ok(None)
+    }
 }
