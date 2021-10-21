@@ -4,9 +4,9 @@
   An interactive CLI for creating [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/),
   built on [cocogitto](https://github.com/oknozor/cocogitto) and inspired by
   [cz-cli](https://github.com/commitizen/cz-cli).
-
-  ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/its-danny/koji/CI)
-  ![Current Release](https://img.shields.io/github/v/release/its-danny/koji)
+  
+  [![Current Release](https://img.shields.io/github/v/release/its-danny/koji)](https://github.com/its-danny/koji/releases)
+  [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/its-danny/koji/CI)](https://github.com/its-danny/koji/actions)
   [![Dependency Status](https://deps.rs/repo/github/its-danny/koji/status.svg)](https://deps.rs/repo/github/its-danny/koji)
   [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-pink.svg)](https://conventionalcommits.org)
   [![License](https://img.shields.io/github/license/oknozor/cocogitto)](LICENSE)
