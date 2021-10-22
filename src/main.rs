@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     };
 
     let matches = App::new("koji")
-        .about("An interactive CLI for creating conventional commits.")
+        .about("🦊 An interactive CLI for creating conventional commits.")
         .version(crate_version!())
         .author(crate_authors!())
         .arg(

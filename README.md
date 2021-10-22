@@ -23,11 +23,12 @@ Check the [releases](https://github.com/its-danny/koji/releases) page to downloa
 ### Using koji
 
 ```bash
+# Do some work
+cd dev/work-stuff
+git add .env.production
+
 # Create a conventional commit
 koji
-
-# For extra fun, use emoji
-koji -e # or, --emoji
 ```
 
 ### Add custom commit types
