@@ -12,9 +12,10 @@ pub fn render_commit_type_choice(
 ) -> String {
     let name = &commit_type.name;
     let description = &commit_type.description;
+    let use_emoji = use_emoji && commit_type.emoji.is_some();
 
     let emoji = if use_emoji {
-        format!("{} ", commit_type.emoji)
+        format!("{} ", commit_type.emoji.as_ref().unwrap())
     } else {
         "".into()
     };
@@ -64,8 +65,11 @@ pub fn get_summary(
         .as_string()
         .context("could not convert summary to string")
         .map(|s| {
+            let commit_type = commit_types.get(commit_type).unwrap();
+            let use_emoji = use_emoji && commit_type.emoji.is_some();
+
             if use_emoji {
-                format!("{} {}", commit_types.get(commit_type).unwrap().emoji, s)
+                format!("{} {}", commit_type.emoji.as_ref().unwrap(), s)
             } else {
                 s.into()
             }

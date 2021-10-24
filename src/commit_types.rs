@@ -6,7 +6,7 @@ use crate::config::Config;
 #[derive(Clone, Deserialize)]
 pub struct CommitType {
     pub name: String,
-    pub emoji: String,
+    pub emoji: Option<String>,
     pub description: String,
 }
 
@@ -26,7 +26,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "feat".into(),
             CommitType {
                 name: "feat".into(),
-                emoji: "✨".into(),
+                emoji: Some("✨".into()),
                 description: "A new feature".into(),
             },
         ),
@@ -34,7 +34,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "fix".into(),
             CommitType {
                 name: "fix".into(),
-                emoji: "🐛".into(),
+                emoji: Some("🐛".into()),
                 description: "A bug fix".into(),
             },
         ),
@@ -42,7 +42,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "docs".into(),
             CommitType {
                 name: "docs".into(),
-                emoji: "📚".into(),
+                emoji: Some("📚".into()),
                 description: "Documentation only changes".into(),
             },
         ),
@@ -50,7 +50,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "style".into(),
             CommitType {
                 name: "style".into(),
-                emoji: "💄".into(),
+                emoji: Some("💄".into()),
                 description: "Changes that do not affect the meaning of the code".into(),
             },
         ),
@@ -58,7 +58,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "refactor".into(),
             CommitType {
                 name: "refactor".into(),
-                emoji: "🔨".into(),
+                emoji: Some("🔨".into()),
                 description: "A code change that neither fixes a bug nor adds a feature".into(),
             },
         ),
@@ -66,7 +66,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "perf".into(),
             CommitType {
                 name: "perf".into(),
-                emoji: "⚡".into(),
+                emoji: Some("⚡".into()),
                 description: "A code change that improves performance".into(),
             },
         ),
@@ -74,7 +74,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "test".into(),
             CommitType {
                 name: "test".into(),
-                emoji: "🚨".into(),
+                emoji: Some("🚨".into()),
                 description: "Adding missing tests or correcting existing tests".into(),
             },
         ),
@@ -82,7 +82,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "build".into(),
             CommitType {
                 name: "build".into(),
-                emoji: "📦".into(),
+                emoji: Some("📦".into()),
                 description: "Changes that affect the build system or external dependencies".into(),
             },
         ),
@@ -90,7 +90,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "ci".into(),
             CommitType {
                 name: "ci".into(),
-                emoji: "🤖".into(),
+                emoji: Some("🤖".into()),
                 description: "Changes to our CI configuration files and scripts".into(),
             },
         ),
@@ -98,7 +98,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "chore".into(),
             CommitType {
                 name: "chore".into(),
-                emoji: "🧹".into(),
+                emoji: Some("🧹".into()),
                 description: "Other changes that don't modify src or test files".into(),
             },
         ),
@@ -106,7 +106,7 @@ pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
             "revert".into(),
             CommitType {
                 name: "revert".into(),
-                emoji: "⏪".into(),
+                emoji: Some("⏪".into()),
                 description: "Reverts a previous commit".into(),
             },
         ),
