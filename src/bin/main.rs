@@ -1,18 +1,15 @@
-mod commit_types;
-mod config;
-mod get_answers;
-
-use crate::commit_types::{get_custom_commit_types, get_default_commit_types};
-use crate::config::load_config;
-use crate::get_answers::{
-    get_amended_body, get_body, get_commit_type, get_has_open_issue, get_is_breaking_change,
-    get_issue_reference, get_scope, get_summary, render_commit_type_choice,
-};
-
 use anyhow::Result;
 use clap::{crate_authors, crate_version, App, Arg};
 use cocogitto::CocoGitto;
 use requestty::{prompt, Answers, Question};
+
+use koji::answers::{
+    get_amended_body, get_body, get_commit_type, get_has_open_issue, get_is_breaking_change,
+    get_issue_reference, get_scope, get_summary,
+};
+use koji::commit_types::{get_custom_commit_types, get_default_commit_types};
+use koji::config::load_config;
+use koji::questions::render_commit_type_choice;
 
 const ARG_EMOJI: &str = "emoji";
 const Q_COMMIT_TYPE: &str = "commit_type";
