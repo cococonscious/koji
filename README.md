@@ -18,7 +18,7 @@
 
 - Create conventional commits with ease
 - Help contributors do the same without them having to know how to write one
-- Use emoji with your commit types if you'd like 😊
+- Use emoji with your commit types if you'd like 👋
 - ~~Run as a git hook~~ ([soon](https://github.com/its-danny/koji/issues/2))
 - A single binary so you don't need to bring along a whole other ecosystem to your project
 

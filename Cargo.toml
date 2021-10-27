@@ -4,6 +4,14 @@ version = "1.1.2"
 edition = "2021"
 authors = ["Danny Tatom <its.danny@hey.com>"]
 
+[[bin]]
+name = "koji"
+path = "src/bin/main.rs"
+
+[lib]
+name = "koji"
+path = "src/lib/lib.rs"
+
 [dependencies]
 anyhow = "1.0.44"
 clap = "2.33.3"
