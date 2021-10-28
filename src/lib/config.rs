@@ -11,14 +11,17 @@ pub struct Config {
     pub commit_types: Vec<CommitType>,
 }
 
-/// Loads `koji.toml` if there is one, returning a `Config`.
-pub fn load_config() -> Result<Option<Config>> {
+/// Loads `koji.toml` if there is one, otherwise use the default.
+pub fn load_config() -> Result<Config> {
     if Path::new(CONFIG_FILE).exists() {
         let file = fs::read_to_string(CONFIG_FILE).context("reading config file")?;
         let parsed: Config = toml::from_str(file.as_ref()).context("parsing config file")?;
 
-        Ok(Some(parsed))
+        Ok(parsed)
     } else {
-        Ok(None)
+        let file = include_str!("../../meta/config/koji-default.toml");
+        let parsed: Config = toml::from_str(file).context("parsing defaulting config file")?;
+
+        Ok(parsed)
     }
 }
