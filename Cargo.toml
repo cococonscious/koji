@@ -1,6 +1,6 @@
 [package]
 name = "koji"
-version = "1.1.2"
+version = "1.2.0"
 edition = "2021"
 authors = ["Danny Tatom <its.danny@hey.com>"]
 

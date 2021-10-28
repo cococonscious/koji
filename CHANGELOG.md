@@ -2,6 +2,56 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.2.0 - 2021-10-28
+
+
+### Documentation
+
+413fe9 - fix typo in codecov badge - Danny
+
+0bcc28 - add codecov badge - Danny Tatom
+
+7a91bb - add feature list & more usage examples - Danny Tatom
+
+12dc6f - clean up usage section - Danny Tatom
+
+8d5b34 - update - Danny
+
+
+### Refactoring
+
+916a51 - load default commit types from config - Danny Tatom
+
+2e7cd9 - clean up main func - Danny Tatom
+
+db4756 - restructure app a bit - Danny Tatom
+
+
+### Tests
+
+b7986c - split up tests - Danny Tatom
+
+
+### Bug Fixes
+
+31ef10 - make error messages consistent - Danny Tatom
+
+
+### Features
+
+c3f3c6 - add support for commit types with no emoji - Danny Tatom
+
+
+### Continuous Integration
+
+b386dc - add codecov - Danny Tatom
+
+7e86e9 - add rust-toolchain - Danny Tatom
+
+8f7a8f - add audit workflow - Danny Tatom
+
+
+- - -
 ## 1.1.2 - 2021-10-21
 
 
