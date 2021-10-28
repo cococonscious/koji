@@ -7,6 +7,7 @@
   
   [![Current Release](https://img.shields.io/github/v/release/its-danny/koji)](https://github.com/its-danny/koji/releases)
   [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/its-danny/koji/CI)](https://github.com/its-danny/koji/actions)
+  [![Codecov](https://img.shields.io/codecov/c/gh/its-danny/kjoi)](https://codecov.io/gh/its-danny/koji)
   [![Dependency Status](https://deps.rs/repo/github/its-danny/koji/status.svg)](https://deps.rs/repo/github/its-danny/koji)
   [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-pink.svg)](https://conventionalcommits.org)
   [![License](https://img.shields.io/github/license/oknozor/cocogitto)](LICENSE)
