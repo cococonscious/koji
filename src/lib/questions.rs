@@ -40,21 +40,8 @@ mod tests {
         let commit_types = get_default_commit_types();
 
         let choice =
-            render_commit_type_choice(false, commit_types.get("refactor").unwrap(), &commit_types);
-        assert_eq!(
-            choice,
-            "refactor:   A code change that neither fixes a bug nor adds a feature"
-        );
-
-        let choice =
-            render_commit_type_choice(false, commit_types.get("ci").unwrap(), &commit_types);
-        assert_eq!(
-            choice,
-            "ci:         Changes to our CI configuration files and scripts"
-        );
-
-        let choice =
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
+
         assert_eq!(
             choice,
             "refactor:   🔨 A code change that neither fixes a bug nor adds a feature"
@@ -62,6 +49,28 @@ mod tests {
 
         let choice =
             render_commit_type_choice(true, commit_types.get("ci").unwrap(), &commit_types);
+
+        assert_eq!(
+            choice,
+            "ci:         🤖 Changes to our CI configuration files and scripts"
+        );
+    }
+
+    #[test]
+    fn test_render_commit_type_choice_with_emoji() {
+        let commit_types = get_default_commit_types();
+
+        let choice =
+            render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
+
+        assert_eq!(
+            choice,
+            "refactor:   🔨 A code change that neither fixes a bug nor adds a feature"
+        );
+
+        let choice =
+            render_commit_type_choice(true, commit_types.get("ci").unwrap(), &commit_types);
+
         assert_eq!(
             choice,
             "ci:         🤖 Changes to our CI configuration files and scripts"

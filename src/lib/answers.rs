@@ -126,7 +126,10 @@ mod tests {
     fn test_get_scope() {
         let answer = Some(Answer::String("readme".into()));
         assert_eq!(get_scope(answer.as_ref()).unwrap(), Some("readme".into()));
+    }
 
+    #[test]
+    fn test_get_scope_empty() {
         let answer = Some(Answer::String("".into()));
         assert_eq!(get_scope(answer.as_ref()).unwrap(), None);
     }
@@ -136,12 +139,19 @@ mod tests {
         let commit_types = get_default_commit_types();
 
         let answer = Some(Answer::String("needed more badges".into()));
+
         assert_eq!(
             get_summary(answer.as_ref(), false, "docs", &commit_types).unwrap(),
             "needed more badges"
         );
+    }
+
+    #[test]
+    fn test_get_summary_with_emoji() {
+        let commit_types = get_default_commit_types();
 
         let answer = Some(Answer::String("needed more badges".into()));
+
         assert_eq!(
             get_summary(answer.as_ref(), true, "docs", &commit_types).unwrap(),
             "📚 needed more badges"
@@ -151,11 +161,15 @@ mod tests {
     #[test]
     fn test_get_body() {
         let answer = Some(Answer::String("i _really_ like badges".into()));
+
         assert_eq!(
             get_body(answer.as_ref()).unwrap(),
             Some("i _really_ like badges".into())
         );
+    }
 
+    #[test]
+    fn test_get_body_empty() {
         let answer = Some(Answer::String("".into()));
         assert_eq!(get_body(answer.as_ref()).unwrap(), None);
     }
@@ -174,9 +188,6 @@ mod tests {
 
     #[test]
     fn test_get_issue_reference() {
-        let answer = None;
-        assert_eq!(get_issue_reference(answer.as_ref(), false).unwrap(), None);
-
         let answer = Some(Answer::String("closes #1".into()));
         assert_eq!(
             get_issue_reference(answer.as_ref(), true).unwrap(),
