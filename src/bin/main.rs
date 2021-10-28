@@ -8,7 +8,7 @@ use koji::answers::{
     get_amended_body, get_body, get_commit_type, get_has_open_issue, get_is_breaking_change,
     get_issue_reference, get_scope, get_summary,
 };
-use koji::commit_types::{get_custom_commit_types, get_default_commit_types, CommitType};
+use koji::commit_types::{get_commit_types, CommitType};
 use koji::config::load_config;
 use koji::questions::render_commit_type_choice;
 
@@ -99,11 +99,8 @@ fn create_prompt(
 }
 
 fn main() -> Result<()> {
-    let commit_types = if let Some(config) = load_config()? {
-        get_custom_commit_types(config)
-    } else {
-        get_default_commit_types()
-    };
+    let config = load_config()?;
+    let commit_types = get_commit_types(config);
 
     let matches = create_app().get_matches();
     let use_emoji = matches.is_present(ARG_EMOJI);

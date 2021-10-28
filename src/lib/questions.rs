@@ -31,13 +31,14 @@ pub fn render_commit_type_choice(
 
 #[cfg(test)]
 mod tests {
-    use crate::commit_types::get_default_commit_types;
+    use crate::{commit_types::get_commit_types, config::load_config};
 
     use super::*;
 
     #[test]
     fn test_render_commit_type_choice() {
-        let commit_types = get_default_commit_types();
+        let config = load_config().unwrap();
+        let commit_types = get_commit_types(config);
 
         let choice =
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
@@ -58,7 +59,8 @@ mod tests {
 
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
-        let commit_types = get_default_commit_types();
+        let config = load_config().unwrap();
+        let commit_types = get_commit_types(config);
 
         let choice =
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);

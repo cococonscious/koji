@@ -108,7 +108,7 @@ pub fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>)
 mod tests {
     use requestty::ListItem;
 
-    use crate::commit_types::get_default_commit_types;
+    use crate::{commit_types::get_commit_types, config::load_config};
 
     use super::*;
 
@@ -136,7 +136,8 @@ mod tests {
 
     #[test]
     fn test_get_summary() {
-        let commit_types = get_default_commit_types();
+        let config = load_config().unwrap();
+        let commit_types = get_commit_types(config);
 
         let answer = Some(Answer::String("needed more badges".into()));
 
@@ -148,7 +149,8 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_emoji() {
-        let commit_types = get_default_commit_types();
+        let config = load_config().unwrap();
+        let commit_types = get_commit_types(config);
 
         let answer = Some(Answer::String("needed more badges".into()));
 
