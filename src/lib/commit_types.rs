@@ -10,6 +10,7 @@ pub struct CommitType {
     pub description: String,
 }
 
+/// Get custom commit types from the given config.
 pub fn get_custom_commit_types(config: Config) -> LinkedHashMap<String, CommitType> {
     let mut map = LinkedHashMap::new();
 
@@ -20,6 +21,7 @@ pub fn get_custom_commit_types(config: Config) -> LinkedHashMap<String, CommitTy
     map
 }
 
+/// Get the default commit types.
 pub fn get_default_commit_types() -> LinkedHashMap<String, CommitType> {
     [
         (
