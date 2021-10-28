@@ -95,7 +95,7 @@ fn create_prompt(
             })
             .build(),
     ])
-    .context("Could not build prompt")
+    .context("could not build prompt")
 }
 
 fn main() -> Result<()> {
