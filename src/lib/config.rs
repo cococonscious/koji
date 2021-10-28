@@ -11,6 +11,7 @@ pub struct Config {
     pub commit_types: Vec<CommitType>,
 }
 
+/// Loads `koji.toml` if there is one, returning a `Config`.
 pub fn load_config() -> Result<Option<Config>> {
     if Path::new(CONFIG_FILE).exists() {
         let file = fs::read_to_string(CONFIG_FILE).context("reading config file")?;

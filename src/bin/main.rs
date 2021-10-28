@@ -1,16 +1,19 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use cocogitto::CocoGitto;
+use linked_hash_map::LinkedHashMap;
 use requestty::{prompt, Answers, Question};
 
 use koji::answers::{
     get_amended_body, get_body, get_commit_type, get_has_open_issue, get_is_breaking_change,
     get_issue_reference, get_scope, get_summary,
 };
-use koji::commit_types::{get_custom_commit_types, get_default_commit_types};
+use koji::commit_types::{get_custom_commit_types, get_default_commit_types, CommitType};
 use koji::config::load_config;
 use koji::questions::render_commit_type_choice;
 
+// These exist just so I don't make a typo when using them
+// down below.
 const ARG_EMOJI: &str = "emoji";
 const Q_COMMIT_TYPE: &str = "commit_type";
 const Q_SCOPE: &str = "scope";
@@ -20,14 +23,9 @@ const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
 const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
 const Q_ISSUE_REFERENCE: &str = "issue_reference";
 
-fn main() -> Result<()> {
-    let commit_types = if let Some(config) = load_config()? {
-        get_custom_commit_types(config)
-    } else {
-        get_default_commit_types()
-    };
-
-    let matches = App::new("koji")
+/// Creates the clap app.
+fn create_app<'a, 'b>() -> App<'a, 'b> {
+    App::new("koji")
         .about("🦊 An interactive CLI for creating conventional commits.")
         .version(crate_version!())
         .author(crate_authors!())
@@ -37,11 +35,14 @@ fn main() -> Result<()> {
                 .long("emoji")
                 .help("Prepend summary with relevant emoji based on commit type."),
         )
-        .get_matches();
+}
 
-    let use_emoji = matches.is_present(ARG_EMOJI);
-
-    let answers = prompt(vec![
+/// Creates the interactive prompt.
+fn create_prompt(
+    use_emoji: bool,
+    commit_types: &LinkedHashMap<String, CommitType>,
+) -> Result<Answers> {
+    prompt(vec![
         Question::select(Q_COMMIT_TYPE)
             .message("What type of change are you committing?")
             .page_size(8)
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
             .choices(
                 commit_types
                     .iter()
-                    .map(|(_, t)| render_commit_type_choice(use_emoji, t, &commit_types)),
+                    .map(|(_, t)| render_commit_type_choice(use_emoji, t, commit_types)),
             )
             .build(),
         Question::input(Q_SCOPE)
@@ -93,7 +94,21 @@ fn main() -> Result<()> {
                 }
             })
             .build(),
-    ])?;
+    ])
+    .context("Could not build prompt")
+}
+
+fn main() -> Result<()> {
+    let commit_types = if let Some(config) = load_config()? {
+        get_custom_commit_types(config)
+    } else {
+        get_default_commit_types()
+    };
+
+    let matches = create_app().get_matches();
+    let use_emoji = matches.is_present(ARG_EMOJI);
+
+    let answers = create_prompt(use_emoji, &commit_types)?;
 
     let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?;
     let scope = get_scope(answers.get(Q_SCOPE))?;
