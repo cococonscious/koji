@@ -14,6 +14,7 @@ use koji::questions::render_commit_type_choice;
 
 // These exist just so I don't make a typo when using them
 // down below.
+const ARG_CONFIG: &str = "config";
 const ARG_EMOJI: &str = "emoji";
 const Q_COMMIT_TYPE: &str = "commit_type";
 const Q_SCOPE: &str = "scope";
@@ -30,10 +31,18 @@ fn create_app<'a, 'b>() -> App<'a, 'b> {
         .version(crate_version!())
         .author(crate_authors!())
         .arg(
+            Arg::with_name(ARG_CONFIG)
+                .long(ARG_CONFIG)
+                .short(&ARG_CONFIG[..1])
+                .value_name("FILE")
+                .takes_value(true)
+                .help("Use a custom config file"),
+        )
+        .arg(
             Arg::with_name(ARG_EMOJI)
-                .short("e")
-                .long("emoji")
-                .help("Prepend summary with relevant emoji based on commit type."),
+                .long(ARG_EMOJI)
+                .short(&ARG_EMOJI[..1])
+                .help("Prepend summary with relevant emoji based on commit type"),
         )
 }
 
@@ -99,11 +108,12 @@ fn create_prompt(
 }
 
 fn main() -> Result<()> {
-    let config = load_config()?;
-    let commit_types = get_commit_types(config);
-
     let matches = create_app().get_matches();
     let use_emoji = matches.is_present(ARG_EMOJI);
+    let config_path = matches.value_of(ARG_CONFIG);
+
+    let config = load_config(config_path)?;
+    let commit_types = get_commit_types(config);
 
     let answers = create_prompt(use_emoji, &commit_types)?;
 

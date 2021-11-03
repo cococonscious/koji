@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_get_summary() {
-        let config = load_config().unwrap();
+        let config = load_config(None).unwrap();
         let commit_types = get_commit_types(config);
 
         let answer = Some(Answer::String("needed more badges".into()));
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_emoji() {
-        let config = load_config().unwrap();
+        let config = load_config(None).unwrap();
         let commit_types = get_commit_types(config);
 
         let answer = Some(Answer::String("needed more badges".into()));
