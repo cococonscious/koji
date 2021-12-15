@@ -1,6 +1,8 @@
-changelog_path = "CHANGELOG.md"
 pre_bump_hooks = ["cargo bump {{version}}", "cargo build --release"]
-post_bump_hooks = []
-authors = []
 
-[commit_types]
+[changelog]
+path = "CHANGELOG.md"
+template = "remote"
+remote = "github.com"
+repository = "koji"
+owner = "its-danny"

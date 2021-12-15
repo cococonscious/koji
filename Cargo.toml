@@ -13,12 +13,12 @@ name = "koji"
 path = "src/lib/lib.rs"
 
 [dependencies]
-anyhow = "1.0.44"
-clap = "2.33.3"
-cocogitto = "3.0.0"
+anyhow = "1.0.51"
+clap = "2.34.0"
+cocogitto = "4.0.1"
 linked-hash-map = "0.5.4"
-requestty = "0.1.2"
-serde = { version = "1.0.130", features = [ "derive" ] }
+requestty = "0.1.3"
+serde = { version = "1.0.131", features = [ "derive" ] }
 toml = "0.5.8"
 
 [dev-dependencies]
