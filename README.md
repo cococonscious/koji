@@ -52,7 +52,7 @@ prepare-commit-msg = "koji --hook"
 ```
 
 Similar should work for any hook runner, just make sure you're using
-it with the `prepare-commit-msg` hook as it writes to the commit
+it with the `prepare-commit-msg` hook as it writes the commit
 message to `COMMIT_EDITMSG`.
 
 ### Fancy it up with emoji
