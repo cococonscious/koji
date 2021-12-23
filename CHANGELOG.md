@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.3.4 - 2021-12-23
+
+
+### Continuous Integration
+
+b340c3 - make publish.sh executable - Danny Tatom
+
+
+- - -
 ## 1.3.3 - 2021-12-23
 
 
