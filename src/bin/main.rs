@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::Write;
+
 use anyhow::{Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use cocogitto::CocoGitto;
@@ -16,6 +19,7 @@ use koji::questions::render_commit_type_choice;
 // down below.
 const ARG_CONFIG: &str = "config";
 const ARG_EMOJI: &str = "emoji";
+const ARG_HOOK: &str = "hook";
 const Q_COMMIT_TYPE: &str = "commit_type";
 const Q_SCOPE: &str = "scope";
 const Q_SUMMARY: &str = "summary";
@@ -43,6 +47,11 @@ fn create_app<'a, 'b>() -> App<'a, 'b> {
                 .long(ARG_EMOJI)
                 .short(&ARG_EMOJI[..1])
                 .help("Prepend summary with relevant emoji based on commit type"),
+        )
+        .arg(
+            Arg::with_name(ARG_HOOK)
+                .long(ARG_HOOK)
+                .help("Run as a git hook, outputting the commit message instead of committing"),
         )
 }
 
@@ -108,15 +117,20 @@ fn create_prompt(
 }
 
 fn main() -> Result<()> {
+    // Get CLI args
     let matches = create_app().get_matches();
-    let use_emoji = matches.is_present(ARG_EMOJI);
     let config_path = matches.value_of(ARG_CONFIG);
+    let use_emoji = matches.is_present(ARG_EMOJI);
+    let as_hook = matches.is_present(ARG_HOOK);
 
+    // Load config if available and get commit types
     let config = load_config(config_path)?;
     let commit_types = get_commit_types(config);
 
+    // Get answers from the users
     let answers = create_prompt(use_emoji, &commit_types)?;
 
+    // Create data necessary for a conventional commit
     let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?;
     let scope = get_scope(answers.get(Q_SCOPE))?;
     let summary = get_summary(
@@ -131,9 +145,35 @@ fn main() -> Result<()> {
     let issue_reference = get_issue_reference(answers.get(Q_ISSUE_REFERENCE), has_open_issue)?;
     let body = get_amended_body(&body, &issue_reference);
 
-    let cocogitto = CocoGitto::get()?;
+    if as_hook {
+        // Output a commit message to COMMIT_EDITMSG
+        let message = CocoGitto::get_conventional_message(
+            commit_type,
+            scope,
+            summary,
+            body,
+            None,
+            is_breaking_change,
+        )?;
 
-    cocogitto.conventional_commit(commit_type, scope, summary, body, None, is_breaking_change)?;
+        let current_path = &std::env::current_dir()?;
+        let commit_file_path = current_path.join(".git/COMMIT_EDITMSG");
+        let mut file = File::create(commit_file_path)?;
+
+        file.write_all(message.as_bytes())?;
+    } else {
+        // Create a commit
+        let cocogitto = CocoGitto::get()?;
+
+        cocogitto.conventional_commit(
+            commit_type,
+            scope,
+            summary,
+            body,
+            None,
+            is_breaking_change,
+        )?;
+    }
 
     Ok(())
 }
