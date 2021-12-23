@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/checkout@v1
       - name: Build
-        run: ci/action.sh release ${{ matrix.target }}
+        run: cargo build --release --locked --target "${{ matrix.target }}"
 
       - name: Get the version
         id: get_version
