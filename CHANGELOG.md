@@ -2,6 +2,36 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.3.0 - 2021-12-23
+
+
+### Documentation
+
+58c3fb - remove strikethru from hook feature - Danny Tatom
+
+8752fd - add hook example - Danny Tatom
+
+
+### Continuous Integration
+
+70ce66 - update publish workflow - Danny Tatom
+
+78db14 - update rusty-hook config - Danny Tatom
+
+
+### Features
+
+97adbc - add option to run as git hook - Danny Tatom
+
+1fb6ac - allow passing path to a config file - Danny Tatom
+
+
+### Build system
+
+03cf21 - update deps - Danny Tatom
+
+
+- - -
 ## 1.2.0 - 2021-10-28
 
 
