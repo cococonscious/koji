@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/checkout@v1
       - name: Build
-        run: rustup target add "${{ matrix.target }}" && cargo build --release --locked --target "${{ matrix.target }}"
+        run: meta/publish.sh release ${{ matrix.target }}
 
       - name: Get the version
         id: get_version
