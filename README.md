@@ -42,6 +42,19 @@ git add .env.production
 koji
 ```
 
+### As a git hook
+
+If you're using [rusty-hook](https://github.com/swellaby/rusty-hook), set this
+in your `rusty-hook.toml` file.
+
+```toml
+prepare-commit-msg = "koji --hook"
+```
+
+Similar should work for any hook runner, just make sure you're using
+it with the `prepare-commit-msg` hook as it writes to the commit
+message to `COMMIT_EDITMSG`.
+
 ### Fancy it up with emoji
 
 Passing `-e` or `--emoji` to `koji` will prepend your commit message
