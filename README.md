@@ -17,11 +17,12 @@
 
 ## Features
 
-- Create conventional commits with ease
-- Help contributors do the same without them having to know how to write one
-- Use emoji with your commit types if you'd like 👋
-- Run as a git hook
+- Create conventional commits with ease & help contributors do
+the same without them having to know how to write one
 - A single binary so you don't need to bring along a whole other ecosystem to your project
+- [Run as a git hook](#as-a-git-hook)
+- [Use emoji](#with-emoji) 👋
+- [Use custom commit types](#use-custom-commit-types)
 
 ## Installation
 
@@ -55,13 +56,13 @@ Similar should work for any hook runner, just make sure you're using
 it with the `prepare-commit-msg` hook as it writes the commit
 message to `COMMIT_EDITMSG`.
 
-### Fancy it up with emoji
+### With emoji
 
 Passing `-e` or `--emoji` to `koji` will prepend your commit message
 with an emoji related to the commit type. The default emoji can be seen
 [here](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
 
-### Add custom commit types
+### Use custom commit types
 
 You can add custom commit types via a `koji.toml` file in the working directory.
 Some examples can be found [here](https://github.com/its-danny/koji/blob/main/meta/config).
