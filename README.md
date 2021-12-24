@@ -46,7 +46,7 @@ koji
 ### As a git hook
 
 If you're using [rusty-hook](https://github.com/swellaby/rusty-hook), set this
-in your `rusty-hook.toml` file.
+in your `.rusty-hook.toml` file.
 
 ```toml
 prepare-commit-msg = "koji --hook"
