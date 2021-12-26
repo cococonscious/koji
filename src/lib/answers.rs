@@ -107,6 +107,7 @@ fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> 
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ExtractedAnswers {
     pub commit_type: String,
     pub scope: Option<String>,
@@ -147,6 +148,8 @@ pub fn get_extracted_answers(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use requestty::ListItem;
 
     use crate::{commit_types::get_commit_types, config::load_config};
@@ -259,5 +262,45 @@ mod tests {
         );
 
         assert_eq!(get_amended_body(&None, &None), None);
+    }
+
+    #[test]
+    fn test_get_extracted_answers() {
+        let answers = Answers::from(HashMap::from([
+            (
+                Q_COMMIT_TYPE.into(),
+                Answer::ListItem(ListItem {
+                    index: 0,
+                    text: "feat: A new feature".into(),
+                }),
+            ),
+            (Q_SCOPE.into(), Answer::String("space".into())),
+            (Q_SUMMARY.into(), Answer::String("add more space".into())),
+            (
+                Q_BODY.into(),
+                Answer::String("just never enough space!".into()),
+            ),
+            (Q_IS_BREAKING_CHANGE.into(), Answer::Bool(false)),
+            (Q_HAS_OPEN_ISSUE.into(), Answer::Bool(true)),
+            (
+                Q_ISSUE_REFERENCE.into(),
+                Answer::String("closes #554".into()),
+            ),
+        ]));
+
+        let config = load_config(None).unwrap();
+        let commit_types = get_commit_types(&config);
+        let extracted_answers = get_extracted_answers(&answers, true, &commit_types).unwrap();
+
+        assert_eq!(
+            extracted_answers,
+            ExtractedAnswers {
+                commit_type: "feat".into(),
+                scope: Some("space".into()),
+                summary: "✨ add more space".into(),
+                body: Some("just never enough space!\n\ncloses #554".into()),
+                is_breaking_change: false,
+            }
+        )
     }
 }
