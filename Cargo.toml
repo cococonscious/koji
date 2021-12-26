@@ -14,7 +14,7 @@ path = "src/lib/lib.rs"
 
 [dependencies]
 anyhow = "1.0.51"
-clap = "2.34.0"
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
 cocogitto = "4.0.1"
 linked-hash-map = "0.5.4"
 requestty = "0.1.3"
