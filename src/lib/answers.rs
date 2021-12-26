@@ -1,12 +1,18 @@
 use anyhow::{Context, Result};
 use linked_hash_map::LinkedHashMap;
-use requestty::Answer;
+use requestty::{Answer, Answers};
 
-use crate::commit_types::CommitType;
+use crate::{
+    commit_types::CommitType,
+    questions::{
+        Q_BODY, Q_COMMIT_TYPE, Q_HAS_OPEN_ISSUE, Q_ISSUE_REFERENCE, Q_IS_BREAKING_CHANGE, Q_SCOPE,
+        Q_SUMMARY,
+    },
+};
 
 /// Parse the commit type out of the menu choice.
 /// e.g. `feat: A new feature` -> `feat`
-pub fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
+fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
     answer
         .context("could not get commit type")?
         .as_list_item()
@@ -17,8 +23,8 @@ pub fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
         .context("could not extract commit type")
 }
 
-/// Gets the scope, returning `None` if it's an empty string.
-pub fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
+/// Get the scope, returning `None` if it's an empty string.
+fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get scope")?
         .as_string()
@@ -26,8 +32,8 @@ pub fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
         .map(|s| if s.is_empty() { None } else { Some(s.into()) })
 }
 
-/// Gets the summary, prepending a relevant emoji if enabled.
-pub fn get_summary(
+/// Get the summary, prepending a relevant emoji if enabled.
+fn get_summary(
     answer: Option<&Answer>,
     use_emoji: bool,
     commit_type: &str,
@@ -49,8 +55,8 @@ pub fn get_summary(
         })
 }
 
-/// Gets the body, returning `None` if it's an empty string.
-pub fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
+/// Get the body, returning `None` if it's an empty string.
+fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get body")?
         .as_string()
@@ -58,16 +64,16 @@ pub fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
         .map(|b| if b.is_empty() { None } else { Some(b.into()) })
 }
 
-/// Returns whether or not there's a breaking change.
-pub fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
+/// Return whether or not there's a breaking change.
+fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get breaking change")?
         .as_bool()
         .context("could not convert breaking change to bool")
 }
 
-/// Returns whether or not there's an open issue.
-pub fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
+/// Return whether or not there's an open issue.
+fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get open issue")?
         .as_bool()
@@ -76,10 +82,7 @@ pub fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
 
 /// Get the issue reference, returning `None` if there isn't
 /// an open issue.
-pub fn get_issue_reference(
-    answer: Option<&Answer>,
-    has_open_issue: bool,
-) -> Result<Option<String>> {
+fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<Option<String>> {
     if has_open_issue {
         answer
             .context("could not get issue reference")?
@@ -93,7 +96,7 @@ pub fn get_issue_reference(
 
 /// If there is a referenced issue, we want to return a new string
 /// appending it to the body. If not, just give back the body.
-pub fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
+fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
     match (body, issue_reference) {
         (Some(body), Some(issue_reference)) => {
             Some(format!("{}\n\n{}", body, issue_reference.to_owned()))
@@ -102,6 +105,44 @@ pub fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>)
         (None, Some(issue_reference)) => Some(issue_reference.to_owned()),
         (None, None) => None,
     }
+}
+
+pub struct ExtractedAnswers {
+    pub commit_type: String,
+    pub scope: Option<String>,
+    pub summary: String,
+    pub body: Option<String>,
+    pub is_breaking_change: bool,
+}
+
+// Extract the prompt answers into an `ExtractedAnswers`,
+// making it usable for creating a commit.
+pub fn get_extracted_answers(
+    answers: &Answers,
+    use_emoji: bool,
+    commit_types: &LinkedHashMap<String, CommitType>,
+) -> Result<ExtractedAnswers> {
+    let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?.to_string();
+    let scope = get_scope(answers.get(Q_SCOPE))?;
+    let summary = get_summary(
+        answers.get(Q_SUMMARY),
+        use_emoji,
+        &commit_type,
+        commit_types,
+    )?;
+    let body = get_body(answers.get(Q_BODY))?;
+    let is_breaking_change = get_is_breaking_change(answers.get(Q_IS_BREAKING_CHANGE))?;
+    let has_open_issue = get_has_open_issue(answers.get(Q_HAS_OPEN_ISSUE))?;
+    let issue_reference = get_issue_reference(answers.get(Q_ISSUE_REFERENCE), has_open_issue)?;
+    let body = get_amended_body(&body, &issue_reference);
+
+    Ok(ExtractedAnswers {
+        commit_type,
+        scope,
+        summary,
+        body,
+        is_breaking_change,
+    })
 }
 
 #[cfg(test)]

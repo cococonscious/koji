@@ -1,6 +1,78 @@
+use anyhow::{Context, Result};
 use linked_hash_map::LinkedHashMap;
+use requestty::{prompt, Answers, Question};
 
 use crate::commit_types::CommitType;
+
+// These exist just so I don't make a typo when using them.
+pub const Q_COMMIT_TYPE: &str = "commit_type";
+pub const Q_SCOPE: &str = "scope";
+pub const Q_SUMMARY: &str = "summary";
+pub const Q_BODY: &str = "body";
+pub const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
+pub const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
+pub const Q_ISSUE_REFERENCE: &str = "issue_reference";
+
+/// Create the interactive prompt.
+pub fn create_prompt(
+    use_emoji: bool,
+    commit_types: &LinkedHashMap<String, CommitType>,
+) -> Result<Answers> {
+    prompt(vec![
+        Question::select(Q_COMMIT_TYPE)
+            .message("What type of change are you committing?")
+            .page_size(8)
+            .transform(|choice, _, backend| {
+                write!(backend, "{}", choice.text.split(':').next().unwrap())
+            })
+            .choices(
+                commit_types
+                    .iter()
+                    .map(|(_, t)| render_commit_type_choice(use_emoji, t, commit_types)),
+            )
+            .build(),
+        Question::input(Q_SCOPE)
+            .message("What is the scope of this change? (press enter to skip)")
+            .build(),
+        Question::input(Q_SUMMARY)
+            .message("Write a short, imperative tense description of the change.")
+            .validate(|summary, _| {
+                if !summary.is_empty() {
+                    Ok(())
+                } else {
+                    Err("A description is required.".into())
+                }
+            })
+            .build(),
+        Question::input(Q_BODY)
+            .message("Provide a longer description of the change. (press enter to skip)")
+            .build(),
+        Question::confirm(Q_IS_BREAKING_CHANGE)
+            .message("Are there any breaking changes?")
+            .build(),
+        Question::confirm(Q_HAS_OPEN_ISSUE)
+            .message("Does this change affect any open issues?")
+            .build(),
+        Question::input(Q_ISSUE_REFERENCE)
+            .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
+            .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
+                Some(a) => a.as_bool().unwrap(),
+                None => false,
+            })
+            .validate(|issue_reference, _| {
+                if !issue_reference.is_empty() {
+                    Ok(())
+                } else {
+                    Err(
+                        "An issue reference is required if this commit is related to an open issue."
+                            .into(),
+                    )
+                }
+            })
+            .build(),
+    ])
+    .context("could not build prompt")
+}
 
 /// Format the commit type choices.
 pub fn render_commit_type_choice(
