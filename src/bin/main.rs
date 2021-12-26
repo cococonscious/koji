@@ -1,29 +1,14 @@
 use std::fs::File;
 use std::io::Write;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use cocogitto::CocoGitto;
-use linked_hash_map::LinkedHashMap;
-use requestty::{prompt, Answers, Question};
 
-use koji::answers::{
-    get_amended_body, get_body, get_commit_type, get_has_open_issue, get_is_breaking_change,
-    get_issue_reference, get_scope, get_summary,
-};
-use koji::commit_types::{get_commit_types, CommitType};
+use koji::answers::get_extracted_answers;
+use koji::commit_types::get_commit_types;
 use koji::config::load_config;
-use koji::questions::render_commit_type_choice;
-
-// These exist just so I don't make a typo when using them
-// down below.
-const Q_COMMIT_TYPE: &str = "commit_type";
-const Q_SCOPE: &str = "scope";
-const Q_SUMMARY: &str = "summary";
-const Q_BODY: &str = "body";
-const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
-const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
-const Q_ISSUE_REFERENCE: &str = "issue_reference";
+use koji::questions::create_prompt;
 
 #[derive(Parser, Debug)]
 #[clap(
@@ -32,7 +17,11 @@ const Q_ISSUE_REFERENCE: &str = "issue_reference";
     author
 )]
 struct Args {
-    #[clap(short, long, help = "Path to a custom config file")]
+    #[clap(
+        short,
+        long,
+        help = "Path to a config file containing custom commit tyeps"
+    )]
     config: Option<String>,
 
     #[clap(
@@ -49,105 +38,33 @@ struct Args {
     hook: bool,
 }
 
-/// Creates the interactive prompt.
-fn create_prompt(
-    use_emoji: bool,
-    commit_types: &LinkedHashMap<String, CommitType>,
-) -> Result<Answers> {
-    prompt(vec![
-        Question::select(Q_COMMIT_TYPE)
-            .message("What type of change are you committing?")
-            .page_size(8)
-            .transform(|choice, _, backend| {
-                write!(backend, "{}", choice.text.split(':').next().unwrap())
-            })
-            .choices(
-                commit_types
-                    .iter()
-                    .map(|(_, t)| render_commit_type_choice(use_emoji, t, commit_types)),
-            )
-            .build(),
-        Question::input(Q_SCOPE)
-            .message("What is the scope of this change? (press enter to skip)")
-            .build(),
-        Question::input(Q_SUMMARY)
-            .message("Write a short, imperative tense description of the change.")
-            .validate(|summary, _| {
-                if !summary.is_empty() {
-                    Ok(())
-                } else {
-                    Err("A description is required.".into())
-                }
-            })
-            .build(),
-        Question::input(Q_BODY)
-            .message("Provide a longer description of the change. (press enter to skip)")
-            .build(),
-        Question::confirm(Q_IS_BREAKING_CHANGE)
-            .message("Are there any breaking changes?")
-            .build(),
-        Question::confirm(Q_HAS_OPEN_ISSUE)
-            .message("Does this change affect any open issues?")
-            .build(),
-        Question::input(Q_ISSUE_REFERENCE)
-            .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
-            .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
-                Some(a) => a.as_bool().unwrap(),
-                None => false,
-            })
-            .validate(|issue_reference, _| {
-                if !issue_reference.is_empty() {
-                    Ok(())
-                } else {
-                    Err(
-                        "An issue reference is required if this commit is related to an open issue."
-                            .into(),
-                    )
-                }
-            })
-            .build(),
-    ])
-    .context("could not build prompt")
-}
-
 fn main() -> Result<()> {
-    // Get CLI args
-    let args = Args::parse();
-    let config_path = args.config;
-    let use_emoji = args.emoji;
-    let as_hook = args.hook;
+    // Get CLI args.
+    let Args {
+        config: config_path,
+        emoji: use_emoji,
+        hook: as_hook,
+    } = Args::parse();
 
-    // Load config if available and get commit types
+    // Load config if available and get commit types.
     let config = load_config(config_path)?;
     let commit_types = get_commit_types(&config);
 
-    // Get answers from the users
+    // Get answers from interactive prompt.
     let answers = create_prompt(use_emoji, &commit_types)?;
 
-    // Create data necessary for a conventional commit
-    let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?;
-    let scope = get_scope(answers.get(Q_SCOPE))?;
-    let summary = get_summary(
-        answers.get(Q_SUMMARY),
-        use_emoji,
-        commit_type,
-        &commit_types,
-    )?;
-    let body = get_body(answers.get(Q_BODY))?;
-    let is_breaking_change = get_is_breaking_change(answers.get(Q_IS_BREAKING_CHANGE))?;
-    let has_open_issue = get_has_open_issue(answers.get(Q_HAS_OPEN_ISSUE))?;
-    let issue_reference = get_issue_reference(answers.get(Q_ISSUE_REFERENCE), has_open_issue)?;
-    let body = get_amended_body(&body, &issue_reference);
+    // Create data necessary for a conventional commit.
+    let extracted_answers = get_extracted_answers(&answers, use_emoji, &commit_types)?;
 
     if as_hook {
-        // Output a commit message to COMMIT_EDITMSG
+        // Output the commit message to `.git/COMMIT_EDITMSG`.
         let message = CocoGitto::get_conventional_message(
-            commit_type,
-            scope,
-            summary,
-            body,
+            &extracted_answers.commit_type,
+            extracted_answers.scope,
+            extracted_answers.summary,
+            extracted_answers.body,
             None,
-            is_breaking_change,
+            extracted_answers.is_breaking_change,
         )?;
 
         let current_path = &std::env::current_dir()?;
@@ -156,16 +73,16 @@ fn main() -> Result<()> {
 
         file.write_all(message.as_bytes())?;
     } else {
-        // Create a commit
+        // Create the commit.
         let cocogitto = CocoGitto::get()?;
 
         cocogitto.conventional_commit(
-            commit_type,
-            scope,
-            summary,
-            body,
+            &extracted_answers.commit_type,
+            extracted_answers.scope,
+            extracted_answers.summary,
+            extracted_answers.body,
             None,
-            is_breaking_change,
+            extracted_answers.is_breaking_change,
         )?;
     }
 

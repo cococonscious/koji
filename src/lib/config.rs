@@ -9,7 +9,8 @@ pub struct Config {
     pub commit_types: Vec<CommitType>,
 }
 
-/// Loads `koji.toml` if there is one, otherwise use the default.
+/// Loads the given config file if one is provided,
+/// otherwise use the default.
 pub fn load_config(path: Option<String>) -> Result<Config> {
     let path = path.unwrap_or_else(|| "koji.toml".into());
 
