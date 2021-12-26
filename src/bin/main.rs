@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Write;
 
 use anyhow::{Context, Result};
-use clap::{crate_authors, crate_version, App, Arg};
+use clap::Parser;
 use cocogitto::CocoGitto;
 use linked_hash_map::LinkedHashMap;
 use requestty::{prompt, Answers, Question};
@@ -17,9 +17,6 @@ use koji::questions::render_commit_type_choice;
 
 // These exist just so I don't make a typo when using them
 // down below.
-const ARG_CONFIG: &str = "config";
-const ARG_EMOJI: &str = "emoji";
-const ARG_HOOK: &str = "hook";
 const Q_COMMIT_TYPE: &str = "commit_type";
 const Q_SCOPE: &str = "scope";
 const Q_SUMMARY: &str = "summary";
@@ -28,31 +25,28 @@ const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
 const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
 const Q_ISSUE_REFERENCE: &str = "issue_reference";
 
-/// Creates the clap app.
-fn create_app<'a, 'b>() -> App<'a, 'b> {
-    App::new("koji")
-        .about("🦊 An interactive CLI for creating conventional commits.")
-        .version(crate_version!())
-        .author(crate_authors!())
-        .arg(
-            Arg::with_name(ARG_CONFIG)
-                .long(ARG_CONFIG)
-                .short(&ARG_CONFIG[..1])
-                .value_name("FILE")
-                .takes_value(true)
-                .help("Use a custom config file"),
-        )
-        .arg(
-            Arg::with_name(ARG_EMOJI)
-                .long(ARG_EMOJI)
-                .short(&ARG_EMOJI[..1])
-                .help("Prepend summary with relevant emoji based on commit type"),
-        )
-        .arg(
-            Arg::with_name(ARG_HOOK)
-                .long(ARG_HOOK)
-                .help("Run as a git hook, outputting the commit message instead of committing"),
-        )
+#[derive(Parser, Debug)]
+#[clap(
+    about = "🦊 An interactive CLI for creating conventional commits.",
+    version,
+    author
+)]
+struct Args {
+    #[clap(short, long, help = "Path to a custom config file")]
+    config: Option<String>,
+
+    #[clap(
+        short,
+        long,
+        help = "Prepend the commit summary with relevant emoji based on commit type"
+    )]
+    emoji: bool,
+
+    #[clap(
+        long,
+        help = "Run as a git hook, writing the commit message to COMMIT_EDITMSG instead of committing"
+    )]
+    hook: bool,
 }
 
 /// Creates the interactive prompt.
@@ -118,10 +112,10 @@ fn create_prompt(
 
 fn main() -> Result<()> {
     // Get CLI args
-    let matches = create_app().get_matches();
-    let config_path = matches.value_of(ARG_CONFIG);
-    let use_emoji = matches.is_present(ARG_EMOJI);
-    let as_hook = matches.is_present(ARG_HOOK);
+    let args = Args::parse();
+    let config_path = args.config;
+    let use_emoji = args.emoji;
+    let as_hook = args.hook;
 
     // Load config if available and get commit types
     let config = load_config(config_path)?;
