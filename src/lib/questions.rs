@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn test_render_commit_type_choice() {
         let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(config);
+        let commit_types = get_commit_types(&config);
 
         let choice =
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
         let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(config);
+        let commit_types = get_commit_types(&config);
 
         let choice =
             render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);

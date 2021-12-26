@@ -13,18 +13,15 @@ pub struct Config {
 pub fn load_config(path: Option<&str>) -> Result<Config> {
     let path = path.unwrap_or("koji.toml");
 
-    if Path::new(path).exists() {
+    let parsed = if Path::new(path).exists() {
         let file = fs::read_to_string(path).context("could not read config file")?;
-        let parsed: Config =
-            toml::from_str(file.as_ref()).context("could not parse config file")?;
-
-        Ok(parsed)
+        toml::from_str(file.as_ref()).context("could not parse config file")?
     } else {
         let file = include_str!("../../meta/config/koji-default.toml");
-        let parsed: Config = toml::from_str(file).context("could not parse default config file")?;
+        toml::from_str(file).context("could not parse default config file")?
+    };
 
-        Ok(parsed)
-    }
+    Ok(parsed)
 }
 
 #[cfg(test)]
@@ -33,16 +30,16 @@ mod tests {
 
     #[test]
     fn test_load_config_default() {
-        let blah = load_config(None).unwrap();
-        let first = blah.commit_types.get(0).unwrap();
+        let config = load_config(None).unwrap();
+        let first = config.commit_types.get(0).unwrap();
 
         assert_eq!(first.description, "A new feature");
     }
 
     #[test]
     fn test_load_config_with_arg() {
-        let blah = load_config(Some("./meta/config/koji-no-emoji.toml")).unwrap();
-        let first = blah.commit_types.get(0).unwrap();
+        let config = load_config(Some("./meta/config/koji-no-emoji.toml")).unwrap();
+        let first = config.commit_types.get(0).unwrap();
 
         assert_eq!(first.emoji, None);
     }

@@ -11,7 +11,7 @@ pub struct CommitType {
 }
 
 /// Get commit types from config.
-pub fn get_commit_types(config: Config) -> LinkedHashMap<String, CommitType> {
+pub fn get_commit_types(config: &Config) -> LinkedHashMap<String, CommitType> {
     let mut map = LinkedHashMap::new();
 
     for commit_type in config.commit_types.iter() {
@@ -30,7 +30,7 @@ mod tests {
     #[test]
     fn test_get_commit_types() {
         let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(config);
+        let commit_types = get_commit_types(&config);
 
         assert_eq!(
             commit_types.get("feat"),
