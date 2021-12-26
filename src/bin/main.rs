@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 use cocogitto::CocoGitto;
 
-use koji::answers::get_extracted_answers;
+use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit_types::get_commit_types;
 use koji::config::load_config;
 use koji::questions::create_prompt;
@@ -53,18 +53,24 @@ fn main() -> Result<()> {
     // Get answers from interactive prompt.
     let answers = create_prompt(use_emoji, &commit_types)?;
 
-    // Create data necessary for a conventional commit.
-    let extracted_answers = get_extracted_answers(&answers, use_emoji, &commit_types)?;
+    // Get data necessary for a conventional commit.
+    let ExtractedAnswers {
+        commit_type,
+        scope,
+        summary,
+        body,
+        is_breaking_change,
+    } = get_extracted_answers(&answers, use_emoji, &commit_types)?;
 
     if as_hook {
         // Output the commit message to `.git/COMMIT_EDITMSG`.
         let message = CocoGitto::get_conventional_message(
-            &extracted_answers.commit_type,
-            extracted_answers.scope,
-            extracted_answers.summary,
-            extracted_answers.body,
+            &commit_type,
+            scope,
+            summary,
+            body,
             None,
-            extracted_answers.is_breaking_change,
+            is_breaking_change,
         )?;
 
         let current_path = &std::env::current_dir()?;
@@ -77,12 +83,12 @@ fn main() -> Result<()> {
         let cocogitto = CocoGitto::get()?;
 
         cocogitto.conventional_commit(
-            &extracted_answers.commit_type,
-            extracted_answers.scope,
-            extracted_answers.summary,
-            extracted_answers.body,
+            &commit_type,
+            scope,
+            summary,
+            body,
             None,
-            extracted_answers.is_breaking_change,
+            is_breaking_change,
         )?;
     }
 
