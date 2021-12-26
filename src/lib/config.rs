@@ -14,13 +14,13 @@ pub struct Config {
 pub fn load_config(path: Option<String>) -> Result<Config> {
     let path = path.unwrap_or_else(|| "koji.toml".into());
 
-    let parsed = if Path::new(&path).exists() {
-        let file = fs::read_to_string(path).context("could not read config file")?;
-        toml::from_str(file.as_ref()).context("could not parse config file")?
+    let file = if Path::new(&path).exists() {
+        fs::read_to_string(path).context("could not read config file")?
     } else {
-        let file = include_str!("../../meta/config/koji-default.toml");
-        toml::from_str(file).context("could not parse default config file")?
+        include_str!("../../meta/config/koji-default.toml").to_string()
     };
+
+    let parsed = toml::from_str(&file).context("could not parse config file")?;
 
     Ok(parsed)
 }
