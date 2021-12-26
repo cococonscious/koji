@@ -113,19 +113,19 @@ mod tests {
         let commit_types = get_commit_types(&config);
 
         let choice =
-            render_commit_type_choice(true, commit_types.get("refactor").unwrap(), &commit_types);
+            render_commit_type_choice(false, commit_types.get("refactor").unwrap(), &commit_types);
 
         assert_eq!(
             choice,
-            "refactor:   🔨 A code change that neither fixes a bug nor adds a feature"
+            "refactor:   A code change that neither fixes a bug nor adds a feature"
         );
 
         let choice =
-            render_commit_type_choice(true, commit_types.get("ci").unwrap(), &commit_types);
+            render_commit_type_choice(false, commit_types.get("ci").unwrap(), &commit_types);
 
         assert_eq!(
             choice,
-            "ci:         🤖 Changes to our CI configuration files and scripts"
+            "ci:         Changes to our CI configuration files and scripts"
         );
     }
 
