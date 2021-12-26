@@ -236,10 +236,17 @@ mod tests {
     #[test]
     fn test_get_issue_reference() {
         let answer = Some(Answer::String("closes #1".into()));
+
         assert_eq!(
             get_issue_reference(answer.as_ref(), true).unwrap(),
             Some("closes #1".into())
         );
+    }
+
+    #[test]
+    fn test_get_issue_reference_empty() {
+        let answer = Some(Answer::String("".into()));
+        assert_eq!(get_issue_reference(answer.as_ref(), true).unwrap(), None);
     }
 
     #[test]
