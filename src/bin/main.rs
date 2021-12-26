@@ -125,7 +125,7 @@ fn main() -> Result<()> {
 
     // Load config if available and get commit types
     let config = load_config(config_path)?;
-    let commit_types = get_commit_types(config);
+    let commit_types = get_commit_types(&config);
 
     // Get answers from the users
     let answers = create_prompt(use_emoji, &commit_types)?;
