@@ -303,35 +303,6 @@ mod tests {
                 is_breaking_change: false,
             }
         );
-    }
-
-    #[test]
-    fn test_commit_message() {
-        let answers = Answers::from(HashMap::from([
-            (
-                Q_COMMIT_TYPE.into(),
-                Answer::ListItem(ListItem {
-                    index: 0,
-                    text: "feat: A new feature".into(),
-                }),
-            ),
-            (Q_SCOPE.into(), Answer::String("space".into())),
-            (Q_SUMMARY.into(), Answer::String("add more space".into())),
-            (
-                Q_BODY.into(),
-                Answer::String("just never enough space!".into()),
-            ),
-            (Q_IS_BREAKING_CHANGE.into(), Answer::Bool(false)),
-            (Q_HAS_OPEN_ISSUE.into(), Answer::Bool(true)),
-            (
-                Q_ISSUE_REFERENCE.into(),
-                Answer::String("closes #554".into()),
-            ),
-        ]));
-
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
-        let extracted_answers = get_extracted_answers(&answers, true, &commit_types).unwrap();
 
         let message = CocoGitto::get_conventional_message(
             &extracted_answers.commit_type,
