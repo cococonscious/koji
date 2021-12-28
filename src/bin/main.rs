@@ -20,7 +20,7 @@ struct Args {
     #[clap(
         short,
         long,
-        help = "Path to a config file containing custom commit tyeps"
+        help = "Path to a config file containing custom commit types"
     )]
     config: Option<String>,
 
