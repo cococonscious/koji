@@ -4,6 +4,7 @@ use requestty::{Answer, Answers};
 
 use crate::{
     commit_types::CommitType,
+    emoji::ReplaceEmoji,
     questions::{
         Q_BODY, Q_COMMIT_TYPE, Q_HAS_OPEN_ISSUE, Q_ISSUE_REFERENCE, Q_IS_BREAKING_CHANGE, Q_SCOPE,
         Q_SUMMARY,
@@ -29,7 +30,13 @@ fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
         .context("could not get scope")?
         .as_string()
         .context("could not convert scope to string")
-        .map(|s| if s.is_empty() { None } else { Some(s.into()) })
+        .map(|scope| {
+            if scope.is_empty() {
+                None
+            } else {
+                Some(scope.replace_emoji_shortcodes())
+            }
+        })
 }
 
 /// Get the summary, prepending a relevant emoji if enabled.
@@ -43,14 +50,15 @@ fn get_summary(
         .context("could not get summary")?
         .as_string()
         .context("could not convert summary to string")
-        .map(|s| {
+        .map(|summary| {
             let commit_type = commit_types.get(commit_type).unwrap();
             let use_emoji = use_emoji && commit_type.emoji.is_some();
+            let summary = summary.replace_emoji_shortcodes();
 
             if use_emoji {
-                format!("{} {}", commit_type.emoji.as_ref().unwrap(), s)
+                format!("{} {}", commit_type.emoji.as_ref().unwrap(), summary)
             } else {
-                s.into()
+                summary
             }
         })
 }
@@ -61,7 +69,13 @@ fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
         .context("could not get body")?
         .as_string()
         .context("could not convert body to string")
-        .map(|b| if b.is_empty() { None } else { Some(b.into()) })
+        .map(|body| {
+            if body.is_empty() {
+                None
+            } else {
+                Some(body.replace_emoji_shortcodes())
+            }
+        })
 }
 
 /// Return whether or not there's a breaking change.
@@ -174,6 +188,16 @@ mod tests {
     }
 
     #[test]
+    fn test_get_scope_with_shortcode() {
+        let answer = Some(Answer::String(":books: readme".into()));
+
+        assert_eq!(
+            get_scope(answer.as_ref()).unwrap(),
+            Some("📚 readme".into())
+        );
+    }
+
+    #[test]
     fn test_get_scope_empty() {
         let answer = Some(Answer::String("".into()));
         assert_eq!(get_scope(answer.as_ref()).unwrap(), None);
@@ -206,12 +230,35 @@ mod tests {
     }
 
     #[test]
+    fn test_get_summary_with_shortcode() {
+        let config = load_config(None).unwrap();
+        let commit_types = get_commit_types(&config);
+
+        let answer = Some(Answer::String("needed more badges :badger:".into()));
+
+        assert_eq!(
+            get_summary(answer.as_ref(), false, "docs", &commit_types).unwrap(),
+            "needed more badges 🦡"
+        );
+    }
+
+    #[test]
     fn test_get_body() {
         let answer = Some(Answer::String("i _really_ like badges".into()));
 
         assert_eq!(
             get_body(answer.as_ref()).unwrap(),
             Some("i _really_ like badges".into())
+        );
+    }
+
+    #[test]
+    fn test_get_body_with_shortcode() {
+        let answer = Some(Answer::String("i _really_ like badges :badger:".into()));
+
+        assert_eq!(
+            get_body(answer.as_ref()).unwrap(),
+            Some("i _really_ like badges 🦡".into())
         );
     }
 

@@ -50,6 +50,8 @@ Passing `-e` or `--emoji` to `koji` will prepend your commit message
 with an emoji related to the commit type. The default emoji can be seen
 [here](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
 
+You can also use shortcodes (`:pinched_fingers:`) in the scope, summary, or body.
+
 ### Autocomplete
 
 Passing `-a` or `--autocomplete` to `koji` will enable autocomplete for the scope
