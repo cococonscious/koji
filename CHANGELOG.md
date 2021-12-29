@@ -2,6 +2,73 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 1.4.0 - 2021-12-29
+
+
+### Documentation
+
+7bc7a6 - add notes for autocomplete - Danny Tatom
+
+1ed5dd - fix badge url - Danny
+
+cdc36b - fix typo - Danny
+
+622b5b - update feature list - Danny Tatom
+
+2c2670 - fix typo - Danny Tatom
+
+
+### Features
+
+7de38d - add support for emoji shortcodes - Danny Tatom
+
+920181 - add optional autocomplete for scope prompt - Danny Tatom
+
+
+### Tests
+
+92ad3b - remove silly test - Danny Tatom
+
+fcf3f1 - fix tests - Danny Tatom
+
+7ae71c - move get_conventional_message assertion to existing test - Danny Tatom
+
+e56d87 - add a (redundant?) test for get_conventional_message - Danny Tatom
+
+601dcd - add test for get_extracted_answers - Danny Tatom
+
+dbfe90 - add test for get_commit_types - Danny Tatom
+
+
+### Bug Fixes
+
+75aaca - fix typo in help - Danny Tatom
+
+
+### Continuous Integration
+
+28b4c1 - fix codecov ignore path - Danny
+
+84a9c1 - add codecov config file - Danny Tatom
+
+
+### Build system
+
+4994be - update clap to 3.0.0-rc.8 - Danny Tatom
+
+
+### Refactoring
+
+f1a000 - destructure get_extracted_answers return value - Danny Tatom
+
+edd03f - clean up load_config - Danny Tatom
+
+4cde0f - move some stuff around - Danny Tatom
+
+4b0158 - little bit of code cleanup - Danny Tatom
+
+
+- - -
 ## 1.3.4 - 2021-12-23
 
 
