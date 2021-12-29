@@ -20,8 +20,9 @@
 - Create conventional commits with ease & help contributors do
 the same without them having to know how to write one
 - A single binary so you don't need to bring along a whole other ecosystem to your project
-- [Run as a git hook](#as-a-git-hook)
 - [Use emoji](#with-emoji) 👋
+- [Autocomplete for scope](#autocomplete)
+- [Run as a git hook](#as-a-git-hook)
 - [Use custom commit types](#use-custom-commit-types)
 
 ## Installation
@@ -43,6 +44,25 @@ git add .env.production
 koji
 ```
 
+### With emoji
+
+Passing `-e` or `--emoji` to `koji` will prepend your commit message
+with an emoji related to the commit type. The default emoji can be seen
+[here](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
+
+### Autocomplete
+
+Passing `-a` or `--autocomplete` to `koji` will enable autocomplete for the scope
+prompt. This scans your commit history to collect previous scopes, so it does slow
+down the startup a bit.
+
+For reference, ran inside the [angular](https://github.com/angular/angular) repo with 22k commits:
+
+```
+koji      0.00s
+koji -a   0.40s
+```
+
 ### As a git hook
 
 If you're using [rusty-hook](https://github.com/swellaby/rusty-hook), set this
@@ -55,12 +75,6 @@ prepare-commit-msg = "koji --hook"
 Similar should work for any hook runner, just make sure you're using
 it with the `prepare-commit-msg` hook as it writes the commit
 message to `COMMIT_EDITMSG`.
-
-### With emoji
-
-Passing `-e` or `--emoji` to `koji` will prepend your commit message
-with an emoji related to the commit type. The default emoji can be seen
-[here](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
 
 ### Use custom commit types
 
