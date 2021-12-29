@@ -160,14 +160,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_existing_scopes() {
-        let scopes = get_existing_scopes().unwrap();
-
-        assert!(scopes.contains(&"readme".to_string()));
-        assert!(scopes.contains(&"workflows".to_string()));
-    }
-
-    #[test]
     fn test_render_commit_type_choice() {
         let config = load_config(None).unwrap();
         let commit_types = get_commit_types(&config);
