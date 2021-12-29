@@ -16,6 +16,8 @@ path = "src/lib/lib.rs"
 anyhow = "1.0.51"
 clap = { version = "3.0.0-rc.8", features = ["derive"] }
 cocogitto = "4.0.1"
+conventional_commit_parser = "0.9.3"
+git2 = "0.13.25"
 linked-hash-map = "0.5.4"
 requestty = "0.1.3"
 serde = { version = "1.0.131", features = [ "derive" ] }
