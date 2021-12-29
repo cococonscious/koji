@@ -32,6 +32,13 @@ struct Args {
     emoji: bool,
 
     #[clap(
+        short,
+        long,
+        help = "Enables auto-complete for scope prompt via scanning commit history"
+    )]
+    autocomplete: bool,
+
+    #[clap(
         long,
         help = "Run as a git hook, writing the commit message to COMMIT_EDITMSG instead of committing"
     )]
@@ -43,6 +50,7 @@ fn main() -> Result<()> {
     let Args {
         config: config_path,
         emoji: use_emoji,
+        autocomplete: use_autocomplete,
         hook: as_hook,
     } = Args::parse();
 
@@ -51,7 +59,7 @@ fn main() -> Result<()> {
     let commit_types = get_commit_types(&config);
 
     // Get answers from interactive prompt.
-    let answers = create_prompt(use_emoji, &commit_types)?;
+    let answers = create_prompt(use_emoji, use_autocomplete, &commit_types)?;
 
     // Get data necessary for a conventional commit.
     let ExtractedAnswers {
