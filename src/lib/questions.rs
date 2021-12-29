@@ -8,7 +8,7 @@ use requestty::{
     Answers, Question,
 };
 
-use crate::commit_types::CommitType;
+use crate::{commit_types::CommitType, emoji::ReplaceEmoji};
 
 // These exist just so I don't make a typo when using them.
 pub const Q_COMMIT_TYPE: &str = "commit_type";
@@ -103,16 +103,20 @@ pub fn create_prompt(
             .build(),
         Question::input(Q_SCOPE)
             .message("What is the scope of this change? (press enter to skip)")
+            .transform(|scope, _, backend| write!(backend, "{}", scope.replace_emoji_shortcodes()))
             .auto_complete(|scope, _| {
                 if !use_autocomplete || scopes.is_empty() {
                     completions![scope]
                 } else {
-                    scopes.clone()
+                    scopes.to_owned()
                 }
             })
             .build(),
         Question::input(Q_SUMMARY)
             .message("Write a short, imperative tense description of the change.")
+            .transform(|summary, _, backend| {
+                write!(backend, "{}", summary.replace_emoji_shortcodes())
+            })
             .validate(|summary, _| {
                 if !summary.is_empty() {
                     Ok(())
@@ -123,6 +127,7 @@ pub fn create_prompt(
             .build(),
         Question::input(Q_BODY)
             .message("Provide a longer description of the change. (press enter to skip)")
+            .transform(|body, _, backend| write!(backend, "{}", body.replace_emoji_shortcodes()))
             .build(),
         Question::confirm(Q_IS_BREAKING_CHANGE)
             .message("Are there any breaking changes?")
