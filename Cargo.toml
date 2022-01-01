@@ -14,7 +14,7 @@ path = "src/lib/lib.rs"
 
 [dependencies]
 anyhow = "1.0.51"
-clap = { version = "3.0.0-rc.8", features = ["derive"] }
+clap = { version = "3.0.0", features = ["derive"] }
 cocogitto = "4.0.1"
 conventional_commit_parser = "0.9.3"
 emojis = "0.2.1"
