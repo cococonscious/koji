@@ -20,7 +20,7 @@ conventional_commit_parser = "0.9.3"
 emojis = "0.2.1"
 git2 = "0.13.25"
 linked-hash-map = "0.5.4"
-requestty = "0.1.3"
+requestty = "0.2.1"
 serde = { version = "1.0.131", features = [ "derive" ] }
 toml = "0.5.8"
 

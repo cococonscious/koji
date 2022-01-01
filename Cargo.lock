@@ -1026,9 +1026,9 @@ dependencies = [
 
 [[package]]
 name = "requestty"
-version = "0.1.3"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "411059399ea4d5007971959900eee777750eaf539e4fdfecb9bb5d9b3fb99c40"
+checksum = "ef6ca633bf6932164a9cba8c6ae93f7a9086a154d155e70461a79bbd90c5f4ca"
 dependencies = [
  "requestty-ui",
  "smallvec",
