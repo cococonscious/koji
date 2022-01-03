@@ -130,8 +130,8 @@ pub struct ExtractedAnswers {
     pub is_breaking_change: bool,
 }
 
-// Extract the prompt answers into an `ExtractedAnswers`,
-// making it usable for creating a commit.
+/// Extract the prompt answers into an `ExtractedAnswers`,
+/// making it usable for creating a commit.
 pub fn get_extracted_answers(
     answers: &Answers,
     use_emoji: bool,
