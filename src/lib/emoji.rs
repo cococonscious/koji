@@ -1,7 +1,7 @@
 fn replace_emoji_shortcodes(mut string: String) -> String {
     for emoji in emojis::iter() {
         if let Some(shortcode) = emoji.shortcode() {
-            string = string.replace(&format!(":{}:", shortcode), emoji.as_str());
+            string = string.replace(&format!(":{shortcode}:"), emoji.as_str());
         }
     }
 
