@@ -56,7 +56,11 @@ fn get_summary(
             let summary = summary.replace_emoji_shortcodes();
 
             if use_emoji {
-                format!("{} {}", commit_type.emoji.as_ref().unwrap(), summary)
+                if let Some(emoji) = &commit_type.emoji {
+                    format!("{emoji} {summary}")
+                } else {
+                    summary
+                }
             } else {
                 summary
             }
@@ -112,9 +116,7 @@ fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<
 /// appending it to the body. If not, just give back the body.
 fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
     match (body, issue_reference) {
-        (Some(body), Some(issue_reference)) => {
-            Some(format!("{}\n\n{}", body, issue_reference.to_owned()))
-        }
+        (Some(body), Some(issue_reference)) => Some(format!("{body}\n\n{issue_reference}")),
         (Some(body), None) => Some(body.into()),
         (None, Some(issue_reference)) => Some(issue_reference.to_owned()),
         (None, None) => None,

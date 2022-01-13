@@ -65,7 +65,11 @@ fn format_commit_type_choice(
     let use_emoji = use_emoji && commit_type.emoji.is_some();
 
     let emoji = if use_emoji {
-        format!("{} ", commit_type.emoji.as_ref().unwrap())
+        if let Some(emoji) = &commit_type.emoji {
+            format!("{emoji} ")
+        } else {
+            "".into()
+        }
     } else {
         "".into()
     };
@@ -78,7 +82,7 @@ fn format_commit_type_choice(
         - commit_type.name.chars().count()
         + if use_emoji { 5 } else { 3 };
 
-    format!("{}:{:>width$}{}", name, emoji, description, width = width)
+    format!("{name}:{emoji:>width$}{description}")
 }
 
 /// Validate summary.
