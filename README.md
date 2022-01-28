@@ -38,7 +38,7 @@ This will soon enough be made easier with [webinstall.dev](https://github.com/it
 ```bash
 # Do some work
 cd dev/work-stuff
-git add .env.production
+git add example.env
 
 # Create a conventional commit
 koji
