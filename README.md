@@ -82,6 +82,11 @@ Similar should work for any hook runner, just make sure you're using
 it with the `prepare-commit-msg` hook as it writes the commit
 message to `COMMIT_EDITMSG`.
 
+When using it as a hook, any message passed to `git -m` will be used
+for the commit summary. Writing your commit as a conventional commit,
+e.g. `git commit -m "feat(space): delete some stars"` will bypass
+koji altogether.
+
 ### Use custom commit types
 
 You can add custom commit types via a `koji.toml` file in the working directory.
