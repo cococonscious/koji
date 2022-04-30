@@ -17,60 +17,37 @@
 
 ## Features
 
-- Create conventional commits with ease & help contributors do
-the same without them having to know how to write one
+- Create conventional commits with ease
 - Use alongside [cocogitto](https://github.com/oknozor/cocogitto)
 for automatic versioning, changelog generation, and more
-- [Use emoji](#with-emoji) 👋
-- [Autocomplete for scope](#autocomplete)
-- [Run as a git hook](#as-a-git-hook)
-- [Use custom commit types](#configuration)
+- Use emoji 👋 (or, shortcodes)
+- Autocomplete for commit scope
+- Run as a git hook
+- Custom commit types
 
 ## Installation
 
-Check the [releases](https://github.com/its-danny/koji/releases) page to download koji for your platform.
+```bash
+curl -sS https://webinstall.dev/koji | bash
+```
 
-This will soon enough be made easier with [webinstall.dev](https://github.com/its-danny/koji/issues/10).
+Make sure to have both [git](https://git-scm.com/) and openssl installed first.
 
-**Note:** Koji requires OpenSSL 3.
-Refer to [this comment](https://github.com/its-danny/koji/issues/53#issuecomment-1076690486)
+**Note:** Refer to [this comment](https://github.com/its-danny/koji/issues/53#issuecomment-1076690486)
 for getting it to work on an M1 Macbook Pro.
 
 ## Usage
 
-### Using koji
-
 ```bash
 # Do some work
-cd dev/work-stuff
-git add example.env
+cd dev/nasa
+git add stars
 
 # Create a conventional commit
 koji
 ```
 
-### With emoji
-
-Passing `-e` or `--emoji` to `koji` will prepend your commit message
-with an emoji related to the commit type. The default emoji can be seen
-[here](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
-
-You can also use shortcodes (`:pinched_fingers:`) in the scope, summary, or body.
-
-### Autocomplete
-
-Passing `-a` or `--autocomplete` to `koji` will enable autocomplete for the scope
-prompt. This scans your commit history to collect previous scopes, so it does slow
-down the startup a bit.
-
-For reference, ran inside the [angular](https://github.com/angular/angular) repo with 22k commits:
-
-```
-koji      0.00s
-koji -a   0.40s
-```
-
-### As a git hook
+## Using as a git hook
 
 If you're using [rusty-hook](https://github.com/swellaby/rusty-hook), set this
 in your `.rusty-hook.toml` file.
@@ -88,7 +65,7 @@ for the commit summary. Writing your commit as a conventional commit,
 e.g. `git commit -m "feat(space): delete some stars"`, will bypass
 koji altogether.
 
-### Configuration
+## Configuration
 
 Options:
 
@@ -102,3 +79,5 @@ Config files are prioritized in the following order:
 - `.koji.toml` in the working directory
 - `~/.config/koji/config.toml`
 - The [default](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml) config
+
+You can find a few examples of commit types [here](https://github.com/its-danny/koji/blob/main/meta/config).
