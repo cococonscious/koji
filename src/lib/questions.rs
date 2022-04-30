@@ -1,5 +1,3 @@
-use std::fs::read_to_string;
-
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
@@ -106,21 +104,11 @@ fn validate_issue_reference(issue_reference: &str) -> Result<(), String> {
 /// Create the interactive prompt.
 pub fn create_prompt(
     repo: &Repository,
+    message: String,
     use_emoji: bool,
     use_autocomplete: bool,
     commit_types: &LinkedHashMap<String, CommitType>,
 ) -> Result<Answers> {
-    // If a message was passed in via `-m`, we want to use
-    // that as the default commit message in the prompt.
-    //
-    // We do this by reading the first line of `.git/COMMIT_EDITMSG`,
-    // which should work in most scenarios?
-    let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
-    let message = match read_to_string(commit_editmsg) {
-        Ok(contents) => contents.lines().next().unwrap_or("").to_string(),
-        Err(_) => "".to_string(),
-    };
-
     // Scan history for existing scopes we can use
     // to autocomplete the scope prompt.
     let scopes = if use_autocomplete {
