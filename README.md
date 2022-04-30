@@ -24,7 +24,7 @@ for automatic versioning, changelog generation, and more
 - [Use emoji](#with-emoji) 👋
 - [Autocomplete for scope](#autocomplete)
 - [Run as a git hook](#as-a-git-hook)
-- [Use custom commit types](#use-custom-commit-types)
+- [Use custom commit types](#configuration)
 
 ## Installation
 
@@ -88,7 +88,17 @@ for the commit summary. Writing your commit as a conventional commit,
 e.g. `git commit -m "feat(space): delete some stars"`, will bypass
 koji altogether.
 
-### Use custom commit types
+### Configuration
 
-You can add custom commit types via a `koji.toml` file in the working directory.
-Some examples can be found [here](https://github.com/its-danny/koji/blob/main/meta/config).
+Options:
+
+- `emoji`
+- `autocomplete`
+- `commit_types`
+
+Config files are prioritized in the following order:
+
+- Passed in via `--config`
+- `.koji.toml` in the working directory
+- `~/.config/koji/config.toml`
+- The [default](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml) config
