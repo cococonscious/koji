@@ -112,7 +112,7 @@ pub fn create_prompt(
     // Scan history for existing scopes we can use
     // to autocomplete the scope prompt.
     let scopes = if use_autocomplete {
-        get_existing_scopes(&repo)?
+        get_existing_scopes(repo)?
     } else {
         completions![]
     };
