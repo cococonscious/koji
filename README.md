@@ -19,7 +19,8 @@
 
 - Create conventional commits with ease & help contributors do
 the same without them having to know how to write one
-- A single binary so you don't need to bring along a whole other ecosystem to your project
+- Use alongside [cocogitto](https://github.com/oknozor/cocogitto)
+for automatic versioning, changelog generation, and more
 - [Use emoji](#with-emoji) 👋
 - [Autocomplete for scope](#autocomplete)
 - [Run as a git hook](#as-a-git-hook)
@@ -84,7 +85,7 @@ message to `COMMIT_EDITMSG`.
 
 When using it as a hook, any message passed to `git -m` will be used
 for the commit summary. Writing your commit as a conventional commit,
-e.g. `git commit -m "feat(space): delete some stars"` will bypass
+e.g. `git commit -m "feat(space): delete some stars"`, will bypass
 koji altogether.
 
 ### Use custom commit types
