@@ -8,10 +8,10 @@ echoerr() {
 }
 
 release() {
-
    TAR_DIR="${KOJI_HOME}/target/tar"
 
    target="${1:-}"
+
    if [[ $target == *"osx"* ]]; then
       echoerr "OSX cross-compile is impossible. Fallbacking to cargo..."
       target=""
@@ -39,7 +39,6 @@ release() {
 
    cd "$TAR_DIR"
    tar -czf koji.tar.gz *
-
 }
 
 cmd="$1"
