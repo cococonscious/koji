@@ -67,7 +67,7 @@ fn main() -> Result<()> {
 
     // If the existing message is already in the form of a conventional commit,
     // just go ahead and return early.
-    if let Ok(_) = parse(&message) {
+    if parse(&message).is_ok() {
         return Ok(());
     }
 
