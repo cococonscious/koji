@@ -1,10 +1,11 @@
-use std::fs::File;
+use std::fs::{read_to_string, File};
 use std::io::Write;
 
 use anyhow::Result;
 use clap::Parser;
 use cocogitto::CocoGitto;
 
+use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit_types::get_commit_types;
@@ -57,12 +58,25 @@ fn main() -> Result<()> {
         hook: as_hook,
     } = Args::parse();
 
+    // Get existing commit message (passed in via `-m`)
+    let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
+    let message = match read_to_string(commit_editmsg) {
+        Ok(contents) => contents.lines().next().unwrap_or("").to_string(),
+        Err(_) => "".to_string(),
+    };
+
+    // If the existing message is already in the form of a conventional commit,
+    // just go ahead and return early.
+    if let Ok(_) = parse(&message) {
+        return Ok(());
+    }
+
     // Load config if available and get commit types.
     let config = load_config(config_path)?;
     let commit_types = get_commit_types(&config);
 
     // Get answers from interactive prompt.
-    let answers = create_prompt(&repo, use_emoji, use_autocomplete, &commit_types)?;
+    let answers = create_prompt(&repo, message, use_emoji, use_autocomplete, &commit_types)?;
 
     // Get data necessary for a conventional commit.
     let ExtractedAnswers {
