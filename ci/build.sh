@@ -8,7 +8,6 @@ echoerr() {
 }
 
 release() {
-
    TAR_DIR="${KOJI_HOME}/target/tar"
 
    target="${1:-}"
@@ -22,7 +21,7 @@ release() {
    rm -rf "${KOJI_HOME}/target" 2> /dev/null || true
 
    if [ -n "$target" ]; then
-      cargo install --version 0.1.16 cross 2> /dev/null || true
+      cargo install --version 0.2.1 cross 2> /dev/null || true
       cross build --release --target "$target"
       bin_folder="${target}/release"
    else
@@ -39,7 +38,6 @@ release() {
 
    cd "$TAR_DIR"
    tar -czf koji.tar.gz *
-
 }
 
 cmd="$1"
