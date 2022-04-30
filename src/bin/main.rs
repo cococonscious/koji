@@ -33,7 +33,7 @@ struct Args {
     )]
     emoji: bool,
 
-    #[clap(long, help = "Bypass the emoji flag being set")]
+    #[clap(long, help = "Bypass the emoji flag")]
     no_emoji: bool,
 
     #[clap(
@@ -43,7 +43,7 @@ struct Args {
     )]
     autocomplete: bool,
 
-    #[clap(long, help = "Bypass the autocopmlete flag being set")]
+    #[clap(long, help = "Bypass the autocopmlete flag")]
     no_autocomplete: bool,
 
     #[clap(
@@ -58,12 +58,12 @@ fn main() -> Result<()> {
 
     // Get CLI args.
     let Args {
-        config: config_path,
+        config,
         emoji,
         no_emoji,
         autocomplete,
         no_autocomplete,
-        hook: as_hook,
+        hook,
     } = Args::parse();
 
     // Get existing commit message (passed in via `-m`)
@@ -80,7 +80,7 @@ fn main() -> Result<()> {
     }
 
     // Load config.
-    let config = load_config(config_path)?;
+    let config = load_config(config)?;
 
     // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in.
     let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
@@ -104,7 +104,7 @@ fn main() -> Result<()> {
         is_breaking_change,
     } = get_extracted_answers(&answers, emoji, &commit_types)?;
 
-    if as_hook {
+    if hook {
         // Output the commit message to `.git/COMMIT_EDITMSG`.
         let message = CocoGitto::get_conventional_message(
             &commit_type,

@@ -54,16 +54,33 @@ See `koji --help` for more options.
 
 ## Using as a git hook
 
-If you're using [rusty-hook](https://github.com/swellaby/rusty-hook), set this
-in your `.rusty-hook.toml` file.
+An alternative way to use koji is as a [git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks).
+
+### Manually
+
+Update `.git/hooks/prepare-commit-msg` with the following code:
+
+```bash
+#!/bin/bash
+koji --hook
+```
+
+### [husky](https://github.com/typicode/husky)
+
+```bash
+npx husky add .husky/prepare-commit-msg "koji --test"
+```
+
+### [rusty-hook](https://github.com/swellaby/rusty-hook)
+
+Add this to your `.rusty-hook.toml`:
 
 ```toml
 prepare-commit-msg = "koji --hook"
 ```
 
 Similar should work for any hook runner, just make sure you're using
-it with the `prepare-commit-msg` hook as it writes the commit
-message to `COMMIT_EDITMSG`.
+it with the `prepare-commit-msg` hook.
 
 When using it as a hook, any message passed to `git -m` will be used
 for the commit summary. Writing your commit as a conventional commit,
