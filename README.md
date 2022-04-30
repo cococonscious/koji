@@ -31,6 +31,10 @@ Check the [releases](https://github.com/its-danny/koji/releases) page to downloa
 
 This will soon enough be made easier with [webinstall.dev](https://github.com/its-danny/koji/issues/10).
 
+**Note:** Koji requires OpenSSL 3.
+Refer to [this comment](https://github.com/its-danny/koji/issues/53#issuecomment-1076690486)
+for getting it to work on an M1 Macbook Pro.
+
 ## Usage
 
 ### Using koji
