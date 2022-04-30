@@ -5,6 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 use cocogitto::CocoGitto;
 
+use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit_types::get_commit_types;
 use koji::config::load_config;
@@ -81,8 +82,8 @@ fn main() -> Result<()> {
             is_breaking_change,
         )?;
 
-        let current_path = &std::env::current_dir()?;
-        let commit_file_path = current_path.join(".git/COMMIT_EDITMSG");
+        let repo = Repository::discover(&std::env::current_dir()?)?;
+        let commit_file_path = repo.path().join("COMMIT_EDITMSG");
         let mut file = File::create(commit_file_path)?;
 
         file.write_all(message.as_bytes())?;
