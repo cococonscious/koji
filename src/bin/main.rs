@@ -33,12 +33,18 @@ struct Args {
     )]
     emoji: bool,
 
+    #[clap(long, help = "Bypass the emoji flag being set")]
+    no_emoji: bool,
+
     #[clap(
         short,
         long,
         help = "Enables auto-complete for scope prompt via scanning commit history"
     )]
     autocomplete: bool,
+
+    #[clap(long, help = "Bypass the autocopmlete flag being set")]
+    no_autocomplete: bool,
 
     #[clap(
         long,
@@ -53,8 +59,10 @@ fn main() -> Result<()> {
     // Get CLI args.
     let Args {
         config: config_path,
-        emoji: use_emoji,
-        autocomplete: use_autocomplete,
+        emoji,
+        no_emoji,
+        autocomplete,
+        no_autocomplete,
         hook: as_hook,
     } = Args::parse();
 
@@ -71,12 +79,21 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Load config if available and get commit types.
+    // Load config.
     let config = load_config(config_path)?;
+
+    // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in.
+    let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
+
+    // Use autocomplete if set in config, or passed in via `-e`, and `--no-autocomplete` wasn't passed in.
+    let autocomplete =
+        config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
+
+    // Get commit types from config.
     let commit_types = get_commit_types(&config);
 
     // Get answers from interactive prompt.
-    let answers = create_prompt(&repo, message, use_emoji, use_autocomplete, &commit_types)?;
+    let answers = create_prompt(&repo, message, emoji, autocomplete, &commit_types)?;
 
     // Get data necessary for a conventional commit.
     let ExtractedAnswers {
@@ -85,7 +102,7 @@ fn main() -> Result<()> {
         summary,
         body,
         is_breaking_change,
-    } = get_extracted_answers(&answers, use_emoji, &commit_types)?;
+    } = get_extracted_answers(&answers, emoji, &commit_types)?;
 
     if as_hook {
         // Output the commit message to `.git/COMMIT_EDITMSG`.
