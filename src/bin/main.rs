@@ -47,6 +47,8 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    let repo = Repository::discover(&std::env::current_dir()?)?;
+
     // Get CLI args.
     let Args {
         config: config_path,
@@ -60,7 +62,7 @@ fn main() -> Result<()> {
     let commit_types = get_commit_types(&config);
 
     // Get answers from interactive prompt.
-    let answers = create_prompt(use_emoji, use_autocomplete, &commit_types)?;
+    let answers = create_prompt(&repo, use_emoji, use_autocomplete, &commit_types)?;
 
     // Get data necessary for a conventional commit.
     let ExtractedAnswers {
@@ -82,9 +84,8 @@ fn main() -> Result<()> {
             is_breaking_change,
         )?;
 
-        let repo = Repository::discover(&std::env::current_dir()?)?;
-        let commit_file_path = repo.path().join("COMMIT_EDITMSG");
-        let mut file = File::create(commit_file_path)?;
+        let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
+        let mut file = File::create(commit_editmsg)?;
 
         file.write_all(message.as_bytes())?;
     } else {
