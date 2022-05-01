@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-/// Parse the commit type out of the menu choice.
+/// Parse the commit type out of the menu choice
 /// e.g. `feat: A new feature` -> `feat`
 fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
     answer
@@ -24,7 +24,7 @@ fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
         .context("could not extract commit type")
 }
 
-/// Get the scope, returning `None` if it's an empty string.
+/// Get the scope, returning `None` if it's an empty string
 fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get scope")?
@@ -39,7 +39,7 @@ fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
         })
 }
 
-/// Get the summary, prepending a relevant emoji if enabled.
+/// Get the summary, prepending a relevant emoji if enabled
 fn get_summary(
     answer: Option<&Answer>,
     use_emoji: bool,
@@ -67,7 +67,7 @@ fn get_summary(
         })
 }
 
-/// Get the body, returning `None` if it's an empty string.
+/// Get the body, returning `None` if it's an empty string
 fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
     answer
         .context("could not get body")?
@@ -82,7 +82,7 @@ fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
         })
 }
 
-/// Return whether or not there's a breaking change.
+/// Return whether or not there's a breaking change
 fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get breaking change")?
@@ -90,7 +90,7 @@ fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
         .context("could not convert breaking change to bool")
 }
 
-/// Return whether or not there's an open issue.
+/// Return whether or not there's an open issue
 fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
     answer
         .context("could not get open issue")?
@@ -99,7 +99,7 @@ fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
 }
 
 /// Get the issue reference, returning `None` if there isn't
-/// an open issue.
+/// an open issue
 fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<Option<String>> {
     if has_open_issue {
         answer
@@ -113,7 +113,7 @@ fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<
 }
 
 /// If there is a referenced issue, we want to return a new string
-/// appending it to the body. If not, just give back the body.
+/// appending it to the body. If not, just give back the body
 fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
     match (body, issue_reference) {
         (Some(body), Some(issue_reference)) => Some(format!("{body}\n\n{issue_reference}")),
@@ -133,7 +133,7 @@ pub struct ExtractedAnswers {
 }
 
 /// Extract the prompt answers into an `ExtractedAnswers`,
-/// making it usable for creating a commit.
+/// making it usable for creating a commit
 pub fn get_extracted_answers(
     answers: &Answers,
     use_emoji: bool,

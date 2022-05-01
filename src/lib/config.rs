@@ -13,7 +13,7 @@ pub struct Config {
     pub commit_types: Vec<CommitType>,
 }
 
-/// Find a config and load it.
+/// Find a config and load it
 pub fn load_config(path: Option<String>) -> Result<Config> {
     // Get the default config
     let default_str = include_str!("../../meta/config/default.toml");
