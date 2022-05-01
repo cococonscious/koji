@@ -41,12 +41,16 @@ for getting it to work on an M1 Macbook Pro.
 
 ## Usage
 
+The basic way to use koji is as a replacement for `git commit`,
+enforcing the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/)
+standard by writing your commit through an interactive prompt.
+
 ```bash
 # Do some work
 cd dev/nasa
 git add stars
 
-# Create a conventional commit
+# Commit your work
 koji
 ```
 
@@ -54,7 +58,8 @@ See `koji --help` for more options.
 
 ## Using as a git hook
 
-An alternative way to use koji is as a [git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks).
+An alternative way to use koji is as a [git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks),
+running it any time you run `git commit`.
 
 ### Manually
 
@@ -82,7 +87,7 @@ prepare-commit-msg = "koji --hook"
 Similar should work for any hook runner, just make sure you're using
 it with the `prepare-commit-msg` hook.
 
-When using it as a hook, any message passed to `git -m` will be used
+When using it as a hook, any message passed to `git commit -m` will be used
 for the commit summary. Writing your commit as a conventional commit,
 e.g. `git commit -m "feat(space): delete some stars"`, will bypass
 koji altogether.
