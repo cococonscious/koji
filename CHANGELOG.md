@@ -9,9 +9,9 @@ All notable changes to this project will be documented in this file. See [conven
 
 7bc7a6 - add notes for autocomplete - Danny Tatom
 
-1ed5dd - fix badge url - Danny
+1ed5dd - fix badge url - Danny Tatom
 
-cdc36b - fix typo - Danny
+cdc36b - fix typo - Danny Tatom
 
 622b5b - update feature list - Danny Tatom
 
@@ -47,7 +47,7 @@ dbfe90 - add test for get_commit_types - Danny Tatom
 
 ### Continuous Integration
 
-28b4c1 - fix codecov ignore path - Danny
+28b4c1 - fix codecov ignore path - Danny Tatom
 
 84a9c1 - add codecov config file - Danny Tatom
 
@@ -140,7 +140,7 @@ c27062 - try again to fix publish - Danny Tatom
 
 ### Documentation
 
-413fe9 - fix typo in codecov badge - Danny
+413fe9 - fix typo in codecov badge - Danny Tatom
 
 0bcc28 - add codecov badge - Danny Tatom
 
@@ -148,7 +148,7 @@ c27062 - try again to fix publish - Danny Tatom
 
 12dc6f - clean up usage section - Danny Tatom
 
-8d5b34 - update - Danny
+8d5b34 - update - Danny Tatom
 
 
 ### Refactoring
@@ -248,7 +248,7 @@ d6cab7 - add better config examples - Danny Tatom
 
 72450e - add deps.rs badge - Danny Tatom
 
-468682 - add version badge - Danny
+468682 - add version badge - Danny Tatom
 
 afcfe2 - capitalize cli - Danny Tatom
 
@@ -257,7 +257,7 @@ afcfe2 - capitalize cli - Danny Tatom
 
 ### Miscellaneous Chores
 
-9984fd - add issue templates - Danny
+9984fd - add issue templates - Danny Tatom
 
 
 - - -
