@@ -1,4 +1,4 @@
-use linked_hash_map::LinkedHashMap;
+use indexmap::IndexMap;
 use serde::Deserialize;
 
 use crate::config::Config;
@@ -11,8 +11,8 @@ pub struct CommitType {
 }
 
 /// Get commit types from config.
-pub fn get_commit_types(config: &Config) -> LinkedHashMap<String, CommitType> {
-    let mut map = LinkedHashMap::new();
+pub fn get_commit_types(config: &Config) -> IndexMap<String, CommitType> {
+    let mut map = IndexMap::new();
 
     for commit_type in config.commit_types.iter() {
         map.insert(commit_type.name.to_owned(), commit_type.to_owned());

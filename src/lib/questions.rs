@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
-use linked_hash_map::LinkedHashMap;
+use indexmap::IndexMap;
 use requestty::{
     prompt,
     question::{completions, Completions},
@@ -56,7 +56,7 @@ fn transform_commit_type_choice(choice: &str) -> String {
 fn format_commit_type_choice(
     use_emoji: bool,
     commit_type: &CommitType,
-    commit_types: &LinkedHashMap<String, CommitType>,
+    commit_types: &IndexMap<String, CommitType>,
 ) -> String {
     let name = &commit_type.name;
     let description = &commit_type.description;
@@ -107,7 +107,7 @@ pub fn create_prompt(
     message: String,
     use_emoji: bool,
     use_autocomplete: bool,
-    commit_types: &LinkedHashMap<String, CommitType>,
+    commit_types: &IndexMap<String, CommitType>,
 ) -> Result<Answers> {
     // Scan history for existing scopes we can use
     // to autocomplete the scope prompt.
