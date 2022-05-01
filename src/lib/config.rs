@@ -16,7 +16,7 @@ pub struct Config {
 /// Find a config and load it.
 pub fn load_config(path: Option<String>) -> Result<Config> {
     // Get the default config
-    let default_str = include_str!("../../meta/config/koji-default.toml");
+    let default_str = include_str!("../../meta/config/default.toml");
     let default_config: Config =
         toml::from_str(default_str).context("could not parse config file")?;
 
@@ -68,13 +68,5 @@ mod tests {
         let first = config.commit_types.get(0).unwrap();
 
         assert_eq!(first.description, "A new feature");
-    }
-
-    #[test]
-    fn test_load_config_with_arg() {
-        let config = load_config(Some("./meta/config/koji-no-emoji.toml".into())).unwrap();
-        let first = config.commit_types.get(0).unwrap();
-
-        assert_eq!(first.emoji, None);
     }
 }
