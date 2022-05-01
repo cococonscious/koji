@@ -54,9 +54,7 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    let repo = Repository::discover(&std::env::current_dir()?)?;
-
-    // Get CLI args.
+    // Get CLI args
     let Args {
         config,
         emoji,
@@ -66,36 +64,39 @@ fn main() -> Result<()> {
         hook,
     } = Args::parse();
 
+    // Find repo
+    let repo = Repository::discover(&std::env::current_dir()?)?;
+
     // Get existing commit message (passed in via `-m`)
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
-    let message = match read_to_string(commit_editmsg) {
+    let commit_message = match read_to_string(commit_editmsg) {
         Ok(contents) => contents.lines().next().unwrap_or("").to_string(),
         Err(_) => "".to_string(),
     };
 
     // If the existing message is already in the form of a conventional commit,
-    // just go ahead and return early.
-    if hook && parse(&message).is_ok() {
+    // just go ahead and return early
+    if hook && parse(&commit_message).is_ok() {
         return Ok(());
     }
 
-    // Load config.
+    // Load config
     let config = load_config(config)?;
 
-    // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in.
+    // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in
     let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
 
-    // Use autocomplete if set in config, or passed in via `-e`, and `--no-autocomplete` wasn't passed in.
+    // Use autocomplete if set in config, or passed in via `-e`, and `--no-autocomplete` wasn't passed in
     let autocomplete =
         config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
 
-    // Get commit types from config.
+    // Get commit types from config
     let commit_types = get_commit_types(&config);
 
-    // Get answers from interactive prompt.
-    let answers = create_prompt(&repo, message, emoji, autocomplete, &commit_types)?;
+    // Get answers from interactive prompt
+    let answers = create_prompt(&repo, commit_message, emoji, autocomplete, &commit_types)?;
 
-    // Get data necessary for a conventional commit.
+    // Get data necessary for a conventional commit
     let ExtractedAnswers {
         commit_type,
         scope,
@@ -105,7 +106,7 @@ fn main() -> Result<()> {
     } = get_extracted_answers(&answers, emoji, &commit_types)?;
 
     if hook {
-        // Output the commit message to `.git/COMMIT_EDITMSG`.
+        // Output the commit message to `.git/COMMIT_EDITMSG`
         let message = CocoGitto::get_conventional_message(
             &commit_type,
             scope,
@@ -120,7 +121,7 @@ fn main() -> Result<()> {
 
         file.write_all(message.as_bytes())?;
     } else {
-        // Create the commit.
+        // Create the commit
         let cocogitto = CocoGitto::get()?;
 
         cocogitto.conventional_commit(

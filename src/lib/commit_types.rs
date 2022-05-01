@@ -10,7 +10,7 @@ pub struct CommitType {
     pub description: String,
 }
 
-/// Get commit types from config.
+/// Get commit types from config
 pub fn get_commit_types(config: &Config) -> IndexMap<String, CommitType> {
     let mut map = IndexMap::new();
 
