@@ -3,6 +3,8 @@ name = "koji"
 version = "1.5.0"
 edition = "2021"
 authors = ["Danny Tatom <its.danny@hey.com>"]
+description = "An interactive CLI for creating conventional commits."
+license = "MIT"
 
 [[bin]]
 name = "koji"
