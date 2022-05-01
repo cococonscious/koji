@@ -2,6 +2,42 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.5.0](https://github.com/its-danny/koji/compare/1.4.0..1.5.0) - 2022-05-01
+#### Bug Fixes
+- use git2 to get repo dir - ([db5fa44](https://github.com/its-danny/koji/commit/db5fa449b832c4a75bc264efe1e1e189519adb0b)) - Danny Tatom
+#### Build system
+- **(cog)** add post bump hooks - ([7e1cc59](https://github.com/its-danny/koji/commit/7e1cc59cb8acd3acb3a7fd33d3879015ba799265)) - Danny Tatom
+- **(deps)** update all the deps - ([4c438ea](https://github.com/its-danny/koji/commit/4c438eab192b8453ec10a746b4f0d0f254377160)) - Danny Tatom
+- **(deps)** update rust to 1.58.1 - ([2feb1be](https://github.com/its-danny/koji/commit/2feb1be8b704837305a13e996f997f1b8875d46e)) - Danny
+- **(deps)** update rust to 1.58.0 - ([2c5e6b7](https://github.com/its-danny/koji/commit/2c5e6b7f3f51478fa818ce11f1e71caa17cd034f)) - Danny Tatom
+- **(deps)** update clap to 3.0.0 - ([76231fb](https://github.com/its-danny/koji/commit/76231fbff4e031ec77da3064514fadf805bf8719)) - Danny Tatom
+- **(deps)** update requestty to 0.2.1 - ([e2daea9](https://github.com/its-danny/koji/commit/e2daea959caada8da638b6dee22fd6aa30ff95da)) - Danny Tatom
+#### Continuous Integration
+- **(workflow)** rename build script - ([93764ae](https://github.com/its-danny/koji/commit/93764aea001e180211881100b7afdeaaec50017b)) - Danny Tatom
+- **(workflow)** remove audit workflow - ([2bad853](https://github.com/its-danny/koji/commit/2bad853c2fdd2686ff6d926650e24e3deebc4acf)) - Danny Tatom
+- **(workflows)** redo how releases work - ([02c5177](https://github.com/its-danny/koji/commit/02c5177ec61a68179ddf06e7ba415f722f760e79)) - Danny Tatom
+#### Documentation
+- **(changelog)** clean up names - ([f8eaa31](https://github.com/its-danny/koji/commit/f8eaa31d9b29b7cda3b50458aae408fd538bc0c5)) - Danny Tatom
+- **(readme)** better explain how the git hook works - ([8d08912](https://github.com/its-danny/koji/commit/8d08912611e8fb951b593a8de54c406ccd6b753f)) - Danny Tatom
+- **(readme)** explain git hook usage - ([b12ff65](https://github.com/its-danny/koji/commit/b12ff65857a841eae955126aa195bad5622428dd)) - Danny Tatom
+- **(readme)** add config options - ([e2a3b76](https://github.com/its-danny/koji/commit/e2a3b7603891c01c597f948821f238b531f6b2f9)) - Danny Tatom
+- **(readme)** clean up a bit - ([418dbb8](https://github.com/its-danny/koji/commit/418dbb890fb5cbd4cc5b38a44e0dbebc5ab473e2)) - Danny Tatom
+- **(readme)** clean up - ([7f14e74](https://github.com/its-danny/koji/commit/7f14e743f79bf1be50941306492256c79d669adc)) - Danny Tatom
+- **(readme)** update - ([3ace4c7](https://github.com/its-danny/koji/commit/3ace4c74f94d87f654655ed24a89d40cb7ffd71d)) - Danny Tatom
+- **(readme)** add link for getting it working on M1 - ([69573be](https://github.com/its-danny/koji/commit/69573be783c695d31fff49392b9926910812e84d)) - Danny Tatom
+- **(security)** remove example committing secrets - ([a6b22dd](https://github.com/its-danny/koji/commit/a6b22ddbabe8d3b34e97b0904a490892ab005c9d)) - AJ ONeal
+#### Features
+- **(config)** better config handling - ([d6ad1b9](https://github.com/its-danny/koji/commit/d6ad1b9010c7fd7e5f693f0ed5e8b72b2df91a17)) - Danny Tatom
+- return early if commit message is already conventional - ([caff83d](https://github.com/its-danny/koji/commit/caff83d1cdce1516ee2f6e4e2cfbbd95a0d87a58)) - Danny Tatom
+- use message passed in via -m flag - ([fe58e51](https://github.com/its-danny/koji/commit/fe58e514e136633d95d9427a363288c282e38c81)) - Danny Tatom
+#### Refactoring
+- clippy cleanup - ([d12ad21](https://github.com/its-danny/koji/commit/d12ad219f1e59d9c07efdb1676996f754d7cee64)) - Danny Tatom
+#### Tests
+- add test for replace_emoji_shortcodes - ([f3948e5](https://github.com/its-danny/koji/commit/f3948e5d2a0bf348470304c20638318606faaab3)) - Danny Tatom
+- add more tests for prompt - ([932bc4c](https://github.com/its-danny/koji/commit/932bc4cdc1fad25ca090b4fd63430d1d709f3664)) - Danny Tatom
+
+- - -
+
 ## 1.4.0 - 2021-12-29
 
 
