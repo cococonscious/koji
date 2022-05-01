@@ -27,17 +27,19 @@ for automatic versioning, changelog generation, and more
 
 ## Installation
 
+### webi
+
 ```bash
 curl -sS https://webinstall.dev/koji | bash
 ```
 
-Make sure to have both [git](https://git-scm.com/) and openssl installed first.
+### cargo
 
-There are offical releases for OSX and Linux. Windows should work if you build manually,
-I'm just not sure how to automate it with the current release setup.
+```bash
+cargo install --locked koji
+```
 
-**Note:** Refer to [this comment](https://github.com/its-danny/koji/issues/53#issuecomment-1076690486)
-for getting it to work on an M1 Macbook Pro.
+Be sure to have [git](https://git-scm.com/) installed first.
 
 ## Usage
 
