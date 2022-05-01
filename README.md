@@ -101,7 +101,7 @@ Config files are prioritized in the following order:
 - Passed in via `--config`
 - `.koji.toml` in the working directory
 - `~/.config/koji/config.toml`
-- The [default](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml) config
+- The [default](https://github.com/its-danny/koji/blob/main/meta/config/default.toml) config
 
 ### Options
 
@@ -127,7 +127,7 @@ autocomplete = true
 
 - Type: `Vec<CommitType>`
 - Optional: `true`
-- Description: A list of commit types to use instead of the [default](https://github.com/its-danny/koji/blob/main/meta/config/koji-default.toml).
+- Description: A list of commit types to use instead of the [default](https://github.com/its-danny/koji/blob/main/meta/config/default.toml).
 ```toml
 [[commit_types]]
 name = "feat"
