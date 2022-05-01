@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.5.1](https://github.com/its-danny/koji/compare/1.5.0..1.5.1) - 2022-05-01
+#### Bug Fixes
+- only early return with message if we're in hook mode - ([94c156d](https://github.com/its-danny/koji/commit/94c156d6ca291073869a03dab83e761a6c9e36f9)) - Danny Tatom
+#### Documentation
+- **(readme)** update hook usage - ([8547437](https://github.com/its-danny/koji/commit/85474374b4bad97465b396359191247caa541f9a)) - Danny Tatom
+#### Miscellaneous Chores
+- add desc and license to cargo file - ([3d2bf72](https://github.com/its-danny/koji/commit/3d2bf729aa6818a0eeaaf6a2f0ee239bae3cd6e8)) - Danny Tatom
+
+- - -
+
 ## [1.5.0](https://github.com/its-danny/koji/compare/1.4.0..1.5.0) - 2022-05-01
 #### Bug Fixes
 - use git2 to get repo dir - ([db5fa44](https://github.com/its-danny/koji/commit/db5fa449b832c4a75bc264efe1e1e189519adb0b)) - Danny Tatom
