@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use linked_hash_map::LinkedHashMap;
+use indexmap::IndexMap;
 use requestty::{Answer, Answers};
 
 use crate::{
@@ -44,7 +44,7 @@ fn get_summary(
     answer: Option<&Answer>,
     use_emoji: bool,
     commit_type: &str,
-    commit_types: &LinkedHashMap<String, CommitType>,
+    commit_types: &IndexMap<String, CommitType>,
 ) -> Result<String> {
     answer
         .context("could not get summary")?
@@ -137,7 +137,7 @@ pub struct ExtractedAnswers {
 pub fn get_extracted_answers(
     answers: &Answers,
     use_emoji: bool,
-    commit_types: &LinkedHashMap<String, CommitType>,
+    commit_types: &IndexMap<String, CommitType>,
 ) -> Result<ExtractedAnswers> {
     let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?.to_string();
     let scope = get_scope(answers.get(Q_SCOPE))?;

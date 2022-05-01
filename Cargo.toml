@@ -22,10 +22,10 @@ conventional_commit_parser = "0.9.4"
 dirs = "4.0.0"
 emojis = "0.4.0"
 git2 = "0.14.3"
-linked-hash-map = "0.5.4"
-openssl-sys = { version = "0.9.72", features = [ "vendored" ] }
+indexmap = "1.8.1"
+openssl-sys = { version = "0.9.72", features = ["vendored"] }
 requestty = "0.3.0"
-serde = { version = "1.0.136", features = [ "derive" ] }
+serde = { version = "1.0.136", features = ["derive"] }
 toml = "0.5.9"
 
 [dev-dependencies]
