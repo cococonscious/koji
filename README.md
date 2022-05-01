@@ -69,13 +69,13 @@ Update `.git/hooks/prepare-commit-msg` with the following code:
 
 ```bash
 #!/bin/bash
-koji --hook
+exec < /dev/tty && koji --hook || true
 ```
 
 ### [husky](https://github.com/typicode/husky)
 
 ```bash
-npx husky add .husky/prepare-commit-msg "koji --test"
+npx husky add .husky/prepare-commit-msg "exec < /dev/tty && koji --hook || true
 ```
 
 ### [rusty-hook](https://github.com/swellaby/rusty-hook)
@@ -83,7 +83,7 @@ npx husky add .husky/prepare-commit-msg "koji --test"
 Add this to your `.rusty-hook.toml`:
 
 ```toml
-prepare-commit-msg = "koji --hook"
+prepare-commit-msg = "exec < /dev/tty && koji --hook || true"
 ```
 
 Similar should work for any hook runner, just make sure you're using
