@@ -7,8 +7,7 @@ use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, write_commit_msg};
-use koji::commit_types::get_commit_types;
-use koji::config::load_config;
+use koji::config::Config;
 use koji::questions::create_prompt;
 
 #[derive(Parser, Debug)]
@@ -80,7 +79,7 @@ fn main() -> Result<()> {
     }
 
     // Load config
-    let config = load_config(config)?;
+    let config = Config::new(config)?;
 
     // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in
     let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
@@ -90,7 +89,7 @@ fn main() -> Result<()> {
         config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
 
     // Get commit types from config
-    let commit_types = get_commit_types(&config);
+    let commit_types = config.commit_types();
 
     // Get answers from interactive prompt
     let answers = create_prompt(&repo, commit_message, emoji, autocomplete, &commit_types)?;
