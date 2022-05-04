@@ -20,7 +20,7 @@
 - Create conventional commits with ease
 - Use alongside [cocogitto](https://github.com/oknozor/cocogitto)
 for automatic versioning, changelog generation, and more
-- Use emoji 👋 (or, shortcodes)
+- Use emoji 👋 (or, [shortcodes](https://github.com/ikatyang/emoji-cheat-sheet))
 - Autocomplete for commit scope
 - Run as a git hook
 - Custom commit types
