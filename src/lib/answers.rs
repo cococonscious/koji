@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use requestty::{Answer, Answers};
 
 use crate::{
-    commit_types::CommitType,
+    config::CommitType,
     emoji::ReplaceEmoji,
     questions::{
         Q_BODY, Q_COMMIT_TYPE, Q_HAS_OPEN_ISSUE, Q_ISSUE_REFERENCE, Q_IS_BREAKING_CHANGE, Q_SCOPE,
@@ -169,7 +169,7 @@ mod tests {
     use cocogitto::CocoGitto;
     use requestty::ListItem;
 
-    use crate::{commit_types::get_commit_types, config::load_config};
+    use crate::config::Config;
 
     use super::*;
 
@@ -207,8 +207,8 @@ mod tests {
 
     #[test]
     fn test_get_summary() {
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
 
         let answer = Some(Answer::String("needed more badges".into()));
 
@@ -220,8 +220,8 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_emoji() {
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
 
         let answer = Some(Answer::String("needed more badges".into()));
 
@@ -233,8 +233,8 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_shortcode() {
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
 
         let answer = Some(Answer::String("needed more badges :badger:".into()));
 
@@ -345,8 +345,8 @@ mod tests {
             ),
         ]));
 
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
         let extracted_answers = get_extracted_answers(&answers, true, &commit_types).unwrap();
 
         assert_eq!(

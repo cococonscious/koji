@@ -8,7 +8,7 @@ use requestty::{
     Answers, Question,
 };
 
-use crate::{commit_types::CommitType, emoji::ReplaceEmoji};
+use crate::{config::CommitType, emoji::ReplaceEmoji};
 
 /// These exist just so I don't make a typo when using them
 pub const Q_COMMIT_TYPE: &str = "commit_type";
@@ -175,7 +175,7 @@ pub fn create_prompt(
 
 #[cfg(test)]
 mod tests {
-    use crate::{commit_types::get_commit_types, config::load_config};
+    use crate::config::Config;
 
     use super::*;
 
@@ -190,8 +190,8 @@ mod tests {
 
     #[test]
     fn test_format_commit_type_choice() {
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
 
         let choice =
             format_commit_type_choice(false, commit_types.get("ci").unwrap(), &commit_types);
@@ -204,8 +204,8 @@ mod tests {
 
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
-        let config = load_config(None).unwrap();
-        let commit_types = get_commit_types(&config);
+        let config = Config::new(None).unwrap();
+        let commit_types = config.commit_types();
 
         let choice =
             format_commit_type_choice(true, commit_types.get("ci").unwrap(), &commit_types);
