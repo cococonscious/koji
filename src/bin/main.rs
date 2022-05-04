@@ -1,13 +1,12 @@
-use std::fs::{read_to_string, File};
-use std::io::Write;
+use std::fs::read_to_string;
 
 use anyhow::Result;
 use clap::Parser;
-use cocogitto::CocoGitto;
 
 use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
+use koji::commit::{commit, write_commit_msg};
 use koji::commit_types::get_commit_types;
 use koji::config::load_config;
 use koji::questions::create_prompt;
@@ -105,33 +104,11 @@ fn main() -> Result<()> {
         is_breaking_change,
     } = get_extracted_answers(&answers, emoji, &commit_types)?;
 
+    // Do the thing!
     if hook {
-        // Output the commit message to `.git/COMMIT_EDITMSG`
-        let message = CocoGitto::get_conventional_message(
-            &commit_type,
-            scope,
-            summary,
-            body,
-            None,
-            is_breaking_change,
-        )?;
-
-        let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
-        let mut file = File::create(commit_editmsg)?;
-
-        file.write_all(message.as_bytes())?;
+        write_commit_msg(repo, commit_type, scope, summary, body, is_breaking_change)?;
     } else {
-        // Create the commit
-        let cocogitto = CocoGitto::get()?;
-
-        cocogitto.conventional_commit(
-            &commit_type,
-            scope,
-            summary,
-            body,
-            None,
-            is_breaking_change,
-        )?;
+        commit(commit_type, scope, summary, body, is_breaking_change)?;
     }
 
     Ok(())

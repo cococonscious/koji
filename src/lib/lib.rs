@@ -1,4 +1,5 @@
 pub mod answers;
+pub mod commit;
 pub mod commit_types;
 pub mod config;
 pub mod emoji;
