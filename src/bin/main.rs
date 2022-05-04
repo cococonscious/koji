@@ -84,7 +84,7 @@ fn main() -> Result<()> {
     // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in
     let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
 
-    // Use autocomplete if set in config, or passed in via `-e`, and `--no-autocomplete` wasn't passed in
+    // Use autocomplete if set in config, or passed in via `-a`, and `--no-autocomplete` wasn't passed in
     let autocomplete =
         config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
 
