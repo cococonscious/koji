@@ -88,11 +88,14 @@ fn main() -> Result<()> {
     let autocomplete =
         config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
 
-    // Get commit types from config
-    let commit_types = config.commit_types();
-
     // Get answers from interactive prompt
-    let answers = create_prompt(&repo, commit_message, emoji, autocomplete, &commit_types)?;
+    let answers = create_prompt(
+        &repo,
+        commit_message,
+        emoji,
+        autocomplete,
+        &config.commit_types,
+    )?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {
@@ -101,7 +104,7 @@ fn main() -> Result<()> {
         summary,
         body,
         is_breaking_change,
-    } = get_extracted_answers(&answers, emoji, &commit_types)?;
+    } = get_extracted_answers(&answers, emoji, &config.commit_types)?;
 
     // Do the thing!
     if hook {

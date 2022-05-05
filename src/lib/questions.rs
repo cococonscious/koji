@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn test_format_commit_type_choice() {
         let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types();
+        let commit_types = config.commit_types;
 
         let choice =
             format_commit_type_choice(false, commit_types.get("ci").unwrap(), &commit_types);
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
         let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types();
+        let commit_types = config.commit_types;
 
         let choice =
             format_commit_type_choice(true, commit_types.get("ci").unwrap(), &commit_types);

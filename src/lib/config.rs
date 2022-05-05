@@ -4,6 +4,12 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use std::{env::current_dir, fs::read_to_string, path::Path};
 
+pub struct Config {
+    pub autocomplete: Option<bool>,
+    pub emoji: Option<bool>,
+    pub commit_types: IndexMap<String, CommitType>,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct CommitType {
     pub name: String,
@@ -12,7 +18,7 @@ pub struct CommitType {
 }
 
 #[derive(Clone, Deserialize)]
-pub struct Config {
+struct ConfigTOML {
     pub autocomplete: Option<bool>,
     pub emoji: Option<bool>,
     #[serde(default)]
@@ -24,34 +30,36 @@ impl Config {
     pub fn new(path: Option<String>) -> Result<Self> {
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
-        let default_config: Config =
+        let default_config: ConfigTOML =
             toml::from_str(default_str).context("could not parse config file")?;
 
-        let mut config: Option<Self> = None;
+        let mut parsed: Option<ConfigTOML> = None;
 
         // Try to get config from users config directory
         let config_dir_path = config_dir().unwrap().join("koji/config.toml");
         if Path::new(&config_dir_path).exists() {
             let contents = read_to_string(config_dir_path).context("could not read config")?;
-            config = Some(toml::from_str(&contents).context("could not parse config")?);
+            parsed = Some(toml::from_str(&contents).context("could not parse config")?);
         };
 
         // Try to get config from working directory
         let working_dir_path = current_dir()?.join(".koji.toml");
         if Path::new(&working_dir_path).exists() {
             let contents = read_to_string(working_dir_path).context("could not read config")?;
-            config = Some(toml::from_str(&contents).context("could not parse config")?);
+            parsed = Some(toml::from_str(&contents).context("could not parse config")?);
         };
 
         // Try to get config from passed directory
         if let Some(path) = path {
             if Path::new(&path).exists() {
                 let contents = read_to_string(&path).context("could not read config")?;
-                config = Some(toml::from_str(&contents).context("could not parse config")?);
+                parsed = Some(toml::from_str(&contents).context("could not parse config")?);
             }
         }
 
-        Ok(match config {
+        // If the users' config doesn't have any commit types,
+        // merge in the defaults
+        let config = match parsed {
             Some(mut config) => {
                 if config.commit_types.is_empty() {
                     config.commit_types = default_config.commit_types;
@@ -60,17 +68,19 @@ impl Config {
                 config
             }
             None => default_config,
-        })
-    }
+        };
 
-    pub fn commit_types(&self) -> IndexMap<String, CommitType> {
-        let mut map = IndexMap::new();
-
-        for commit_type in self.commit_types.iter() {
-            map.insert(commit_type.name.to_owned(), commit_type.to_owned());
+        // Gather up commit types
+        let mut commit_types = IndexMap::new();
+        for commit_type in config.commit_types.iter() {
+            commit_types.insert(commit_type.name.to_owned(), commit_type.to_owned());
         }
 
-        map
+        Ok(Config {
+            autocomplete: config.autocomplete,
+            emoji: config.emoji,
+            commit_types,
+        })
     }
 }
 
@@ -79,17 +89,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_load_config() {
-        let config = Config::new(None).unwrap();
-        let first = config.commit_types.get(0).unwrap();
-
-        assert_eq!(first.description, "A new feature");
-    }
-
-    #[test]
     fn test_commit_types() {
         let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types();
+        let commit_types = config.commit_types;
 
         assert_eq!(
             commit_types.get("feat"),
