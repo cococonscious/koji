@@ -10,7 +10,7 @@ pub struct Config {
     pub commit_types: IndexMap<String, CommitType>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct CommitType {
     pub name: String,
     pub emoji: Option<String>,

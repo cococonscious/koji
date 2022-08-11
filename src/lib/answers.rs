@@ -123,7 +123,7 @@ fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> 
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ExtractedAnswers {
     pub commit_type: String,
     pub scope: Option<String>,

@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 
 use conventional_commit_parser::parse;
@@ -63,7 +63,8 @@ fn main() -> Result<()> {
     } = Args::parse();
 
     // Find repo
-    let repo = Repository::discover(&std::env::current_dir()?)?;
+    let repo =
+        Repository::discover(&std::env::current_dir()?).context("could not find git repository")?;
 
     // Get existing commit message (passed in via `-m`)
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
