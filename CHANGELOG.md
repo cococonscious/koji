@@ -2,6 +2,26 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.5.2](https://github.com/its-danny/koji/compare/1.5.1..1.5.2) - 2022-08-11
+#### Build system
+- **(deps)** update all the deps - ([3033a04](https://github.com/its-danny/koji/commit/3033a047fc6322d8508bbe28e189421e474ae920)) - Danny Tatom
+- **(deps)** update rust to 1.61.0 - ([ca49ee8](https://github.com/its-danny/koji/commit/ca49ee8c8eaf8228a5b910f8be5b0f34f2d3f450)) - Danny Tatom
+- remove rust-toolchain file - ([b6d638b](https://github.com/its-danny/koji/commit/b6d638b21831cd3eacb4e2783ee6ac3dad7c7035)) - Danny Tatom
+#### Features
+- finish cleaning up config - ([e108265](https://github.com/its-danny/koji/commit/e1082657d68d4d40417d47cf21579d41e280a5ab)) - Danny Tatom
+#### Miscellaneous Chores
+- **(docs)** remove extra config examples - ([1ddbe21](https://github.com/its-danny/koji/commit/1ddbe21e7deb3fdc4e019cce7c369e7e8d149dfe)) - Danny Tatom
+- fix typo in comment - ([92c8bd7](https://github.com/its-danny/koji/commit/92c8bd74972181102cd5bda6904e1a83b9fba43a)) - Danny Tatom
+#### Refactoring
+- clean up emoji handling - ([a7aaad9](https://github.com/its-danny/koji/commit/a7aaad9c07369e2b4721ec0f58e2b8ef524b35a0)) - Danny Tatom
+- start cleaning up config - ([6f2d2b0](https://github.com/its-danny/koji/commit/6f2d2b04e4d6f12b2a23cdd8e46f9c01fa970d48)) - Danny Tatom
+- move commit code to its own file - ([d6f91d7](https://github.com/its-danny/koji/commit/d6f91d70fb75ffcc118427d2fad181c6f8fd8571)) - Danny Tatom
+- clean up comments - ([68713ad](https://github.com/its-danny/koji/commit/68713adc871403ccd23aa1472dd8cd303bb79978)) - Danny Tatom
+- disable default features of cocogitto - ([94dc806](https://github.com/its-danny/koji/commit/94dc80660e92efeb811c855dd7acc7205eb77e58)) - Danny Tatom
+- replace linked-hash-map with indexmap - ([0b4d689](https://github.com/its-danny/koji/commit/0b4d689c6d9dee871134c7a69957cc8f120e275d)) - Danny Tatom
+
+- - -
+
 ## [1.5.1](https://github.com/its-danny/koji/compare/1.5.0..1.5.1) - 2022-05-01
 #### Bug Fixes
 - only early return with message if we're in hook mode - ([94c156d](https://github.com/its-danny/koji/commit/94c156d6ca291073869a03dab83e761a6c9e36f9)) - Danny Tatom
