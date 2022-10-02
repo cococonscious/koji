@@ -15,17 +15,17 @@ name = "koji"
 path = "src/lib/lib.rs"
 
 [dependencies]
-anyhow = "1.0.61"
-clap = { version = "3.2.16", features = ["derive"] }
-cocogitto = { version = "5.1.0", default-features = false }
+anyhow = "1.0.65"
+clap = { version = "4.0.8", features = ["derive"] }
+cocogitto = { version = "5.2.0", default-features = false }
 conventional_commit_parser = "0.9.4"
 dirs = "4.0.0"
 emojis = "0.4.0"
 git2 = "0.15.0"
 indexmap = "1.9.1"
-openssl-sys = { version = "0.9.75", features = ["vendored"] }
-requestty = "0.4.1"
-serde = { version = "1.0.143", features = ["derive"] }
+openssl-sys = { version = "0.9.76", features = ["vendored"] }
+requestty = "0.5.0"
+serde = { version = "1.0.145", features = ["derive"] }
 toml = "0.5.9"
 
 [dev-dependencies]
