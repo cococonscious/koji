@@ -40,7 +40,15 @@ pub fn commit(
 ) -> Result<()> {
     let cocogitto = CocoGitto::get()?;
 
-    cocogitto.conventional_commit(&commit_type, scope, summary, body, None, is_breaking_change)?;
+    cocogitto.conventional_commit(
+        &commit_type,
+        scope,
+        summary,
+        body,
+        None,
+        is_breaking_change,
+        false,
+    )?;
 
     Ok(())
 }
