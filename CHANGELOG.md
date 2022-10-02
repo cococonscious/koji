@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.5.3](https://github.com/its-danny/koji/compare/1.5.2..1.5.3) - 2022-10-02
+#### Build system
+- **(deps)** update all the deps - ([af5687f](https://github.com/its-danny/koji/commit/af5687f8d7c9a15ba53c6f9598be312948cfebd1)) - Danny Tatom
+
+- - -
+
 ## [1.5.2](https://github.com/its-danny/koji/compare/1.5.1..1.5.2) - 2022-08-11
 #### Build system
 - **(deps)** update all the deps - ([3033a04](https://github.com/its-danny/koji/commit/3033a047fc6322d8508bbe28e189421e474ae920)) - Danny Tatom
