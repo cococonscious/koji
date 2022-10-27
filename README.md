@@ -49,8 +49,8 @@ standard by writing your commit through an interactive prompt.
 
 ```bash
 # Do some work
-cd dev/nasa
-git add stars
+cd dev/koji
+git add README.md
 
 # Commit your work
 koji
