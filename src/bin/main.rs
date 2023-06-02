@@ -64,7 +64,7 @@ fn main() -> Result<()> {
 
     // Find repo
     let repo =
-        Repository::discover(&std::env::current_dir()?).context("could not find git repository")?;
+        Repository::discover(std::env::current_dir()?).context("could not find git repository")?;
 
     // Get existing commit message (passed in via `-m`)
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
