@@ -11,55 +11,59 @@ use koji::config::Config;
 use koji::questions::create_prompt;
 
 #[derive(Parser, Debug)]
-#[clap(
+#[command(
     about = "🦊 An interactive CLI for creating conventional commits.",
     version,
     author
 )]
 struct Args {
-    #[clap(
+    #[arg(
+        short,
+        long,
+        help = "Enables autocomplete for scope prompt via scanning commit history"
+    )]
+    autocomplete: Option<bool>,
+
+    #[arg(short, long, help = "Enables breaking change prompt")]
+    breaking_changes: Option<bool>,
+
+    #[arg(
         short,
         long,
         help = "Path to a config file containing custom commit types"
     )]
     config: Option<String>,
 
-    #[clap(
+    #[arg(
         short,
         long,
         help = "Prepend the commit summary with relevant emoji based on commit type"
     )]
-    emoji: bool,
+    emoji: Option<bool>,
 
-    #[clap(long, help = "Bypass the emoji flag")]
-    no_emoji: bool,
-
-    #[clap(
-        short,
-        long,
-        help = "Enables auto-complete for scope prompt via scanning commit history"
-    )]
-    autocomplete: bool,
-
-    #[clap(long, help = "Bypass the autocopmlete flag")]
-    no_autocomplete: bool,
-
-    #[clap(
+    #[arg(
         long,
         help = "Run as a git hook, writing the commit message to COMMIT_EDITMSG instead of committing"
     )]
     hook: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Enables issue prompt, which will append a reference to an issue in the commit body"
+    )]
+    issues: Option<bool>,
 }
 
 fn main() -> Result<()> {
     // Get CLI args
     let Args {
+        autocomplete,
+        breaking_changes,
         config,
         emoji,
-        no_emoji,
-        autocomplete,
-        no_autocomplete,
         hook,
+        issues,
     } = Args::parse();
 
     // Find repo
@@ -82,12 +86,17 @@ fn main() -> Result<()> {
     // Load config
     let config = Config::new(config)?;
 
-    // Use emoji if set in config, or passed in via `-e`, and `--no-emoji` wasn't passed in
-    let emoji = config.emoji.unwrap_or(emoji) && !no_emoji || emoji;
+    // Use value of `autocomplete` if passed in, otherwise use value from config
+    let autocomplete = autocomplete.unwrap_or(config.autocomplete.unwrap_or(false));
 
-    // Use autocomplete if set in config, or passed in via `-a`, and `--no-autocomplete` wasn't passed in
-    let autocomplete =
-        config.autocomplete.unwrap_or(autocomplete) && !no_autocomplete || autocomplete;
+    // Use value of `breaking_changes` if passed in, otherwise use value from config
+    let breaking_changes = breaking_changes.unwrap_or(config.breaking_changes.unwrap_or(true));
+
+    // Use value of `emoji` if passed in, otherwise use value from config
+    let emoji = emoji.unwrap_or(config.emoji.unwrap_or(false));
+
+    // Use value of `issues` if passed in, otherwise use value from config
+    let issues = issues.unwrap_or(config.issues.unwrap_or(true));
 
     // Get answers from interactive prompt
     let answers = create_prompt(
@@ -95,6 +104,8 @@ fn main() -> Result<()> {
         commit_message,
         emoji,
         autocomplete,
+        breaking_changes,
+        issues,
         &config.commit_types,
     )?;
 

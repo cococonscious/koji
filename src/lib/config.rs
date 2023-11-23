@@ -6,23 +6,27 @@ use std::{env::current_dir, fs::read_to_string, path::Path};
 
 pub struct Config {
     pub autocomplete: Option<bool>,
-    pub emoji: Option<bool>,
+    pub breaking_changes: Option<bool>,
     pub commit_types: IndexMap<String, CommitType>,
+    pub emoji: Option<bool>,
+    pub issues: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct CommitType {
-    pub name: String,
-    pub emoji: Option<String>,
     pub description: String,
+    pub emoji: Option<String>,
+    pub name: String,
 }
 
 #[derive(Clone, Deserialize)]
 struct ConfigTOML {
     pub autocomplete: Option<bool>,
-    pub emoji: Option<bool>,
+    pub breaking_changes: Option<bool>,
     #[serde(default)]
     commit_types: Vec<CommitType>,
+    pub emoji: Option<bool>,
+    pub issues: Option<bool>,
 }
 
 impl Config {
@@ -78,8 +82,10 @@ impl Config {
 
         Ok(Config {
             autocomplete: config.autocomplete,
-            emoji: config.emoji,
+            breaking_changes: config.breaking_changes,
             commit_types,
+            emoji: config.emoji,
+            issues: config.issues,
         })
     }
 }
