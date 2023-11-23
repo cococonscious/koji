@@ -2,6 +2,24 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.0.0](https://github.com/its-danny/koji/compare/1.5.3..2.0.0) - 2023-11-23
+#### Build system
+- **(deps)** update indexmap to 2.1 - ([72ba166](https://github.com/its-danny/koji/commit/72ba1660980ab8da47b1b0d1aac6cacd8a5ea3c7)) - Danny Tatom
+- **(deps)** update git2 to 0.18 - ([e05f7f7](https://github.com/its-danny/koji/commit/e05f7f77b1b93c27cf5072b460620e8eaeefc534)) - Danny Tatom
+- **(deps)** update toml to 0.8 - ([a757f3c](https://github.com/its-danny/koji/commit/a757f3c009cff3d4a3a69dadde88cacdd3111837)) - Danny Tatom
+- **(deps)** update deps, remove patch constraints - ([3ad9f87](https://github.com/its-danny/koji/commit/3ad9f874a6b7443c280351b121fb618b8c2fa14a)) - Danny Tatom
+- **(deps)** update clap and emojis - ([0475b64](https://github.com/its-danny/koji/commit/0475b64668581d1208bec378ac092241a67de4c2)) - Danny Tatom
+#### Documentation
+- **(readme)** add new options - ([fcbbaae](https://github.com/its-danny/koji/commit/fcbbaae75e5f2bf0dd3da64e25043763e3f5f946)) - Danny Tatom
+- **(readme)** fix CI badge - ([29da976](https://github.com/its-danny/koji/commit/29da97655acdede47aa74b9e0d797b9d79c2c462)) - Danny Tatom
+- **(readme)** update demo gif - ([82a4b6f](https://github.com/its-danny/koji/commit/82a4b6fcd7562597d18797aa409474671662fc23)) - Danny Tatom
+#### Features
+- add ability to skip breaking changes and issues questions - ([8cc6b30](https://github.com/its-danny/koji/commit/8cc6b30f00e8cf5e128e48a6e8c49f15794df9dc)) - Danny Tatom
+#### Refactoring
+- **(config)** clean up config - ([02a60d3](https://github.com/its-danny/koji/commit/02a60d36bb5a66dbaf81377d74ea51da49f6b9ab)) - Danny Tatom
+
+- - -
+
 ## [1.5.3](https://github.com/its-danny/koji/compare/1.5.2..1.5.3) - 2022-10-02
 #### Build system
 - **(deps)** update all the deps - ([af5687f](https://github.com/its-danny/koji/commit/af5687f8d7c9a15ba53c6f9598be312948cfebd1)) - Danny Tatom
