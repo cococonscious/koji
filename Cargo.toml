@@ -21,7 +21,7 @@ cocogitto = { version = "5.3", default-features = false }
 conventional_commit_parser = "0.9"
 dirs = "5.0"
 emojis = "0.6"
-git2 = "0.17"
+git2 = "0.18"
 indexmap = "1.9"
 openssl-sys = { version = "0.9", features = ["vendored"] }
 requestty = "0.5"
