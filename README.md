@@ -96,23 +96,15 @@ koji altogether.
 
 ## Configuration
 
-Config files are prioritized in the following order:
+Config values are prioritized in the following order:
 
-- Passed in via `--config`
+- Passed in as arguments (see: `koji --help`)
+- Read from file passed in via `--config`
 - `.koji.toml` in the working directory
 - `~/.config/koji/config.toml`
 - The [default](https://github.com/its-danny/koji/blob/main/meta/config/default.toml) config
 
 ### Options
-
-#### `emoji`
-
-- Type: `bool`
-- Optional: `true`
-- Description: Prepend the commit summary with relevant emoji based on commit type.
-```toml
-emoji = true
-```
 
 #### `autocomplete`
 
@@ -123,7 +115,15 @@ emoji = true
 autocomplete = true
 ```
 
-#### `commit_types`
+#### `breaking-changes`
+- Type: `bool`
+- Optional: `true`
+- Description: Enables breaking change prompt.
+```toml
+breaking_changes = true
+```
+
+#### `commit-types`
 
 - Type: `Vec<CommitType>`
 - Optional: `true`
@@ -134,3 +134,22 @@ name = "feat"
 emoji = "✨"
 description = "A new feature"
 ```
+
+#### `emoji`
+
+- Type: `bool`
+- Optional: `true`
+- Description: Prepend the commit summary with relevant emoji based on commit type.
+```toml
+emoji = true
+```
+
+#### `issues`
+
+- Type: `bool`
+- Optional: `true`
+- Description: Enables issue prompt, which will append a reference to an issue in the commit body.
+```toml
+issues = true
+```
+
