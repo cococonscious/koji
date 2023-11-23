@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use requestty::{Answer, Answers};
 
 use crate::{
-    config::CommitType,
+    config::{CommitType, Config},
     emoji::ReplaceEmoji,
     questions::{
         Q_BODY, Q_COMMIT_TYPE, Q_HAS_OPEN_ISSUE, Q_ISSUE_REFERENCE, Q_IS_BREAKING_CHANGE, Q_SCOPE,
@@ -84,18 +84,18 @@ fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
 
 /// Return whether or not there's a breaking change
 fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
-    answer
-        .context("could not get breaking change")?
+    Ok(answer
+        .unwrap_or(&Answer::Bool(false))
         .as_bool()
-        .context("could not convert breaking change to bool")
+        .unwrap_or(false))
 }
 
 /// Return whether or not there's an open issue
 fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
-    answer
-        .context("could not get open issue")?
+    Ok(answer
+        .unwrap_or(&Answer::Bool(false))
         .as_bool()
-        .context("could not convert open issue to bool")
+        .unwrap_or(false))
 }
 
 /// Get the issue reference, returning `None` if there isn't
@@ -125,27 +125,23 @@ fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> 
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExtractedAnswers {
+    pub body: Option<String>,
     pub commit_type: String,
+    pub is_breaking_change: bool,
     pub scope: Option<String>,
     pub summary: String,
-    pub body: Option<String>,
-    pub is_breaking_change: bool,
 }
 
 /// Extract the prompt answers into an `ExtractedAnswers`,
 /// making it usable for creating a commit
-pub fn get_extracted_answers(
-    answers: &Answers,
-    use_emoji: bool,
-    commit_types: &IndexMap<String, CommitType>,
-) -> Result<ExtractedAnswers> {
+pub fn get_extracted_answers(answers: &Answers, config: &Config) -> Result<ExtractedAnswers> {
     let commit_type = get_commit_type(answers.get(Q_COMMIT_TYPE))?.to_string();
     let scope = get_scope(answers.get(Q_SCOPE))?;
     let summary = get_summary(
         answers.get(Q_SUMMARY),
-        use_emoji,
+        config.emoji,
         &commit_type,
-        commit_types,
+        &config.commit_types,
     )?;
     let body = get_body(answers.get(Q_BODY))?;
     let is_breaking_change = get_is_breaking_change(answers.get(Q_IS_BREAKING_CHANGE))?;
@@ -207,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_get_summary() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, None, None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges".into()));
@@ -220,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_emoji() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, Some(true), None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges".into()));
@@ -233,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_shortcode() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, None, None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges :badger:".into()));
@@ -345,16 +341,15 @@ mod tests {
             ),
         ]));
 
-        let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types;
-        let extracted_answers = get_extracted_answers(&answers, true, &commit_types).unwrap();
+        let config = Config::new(None, None, None, None, None).unwrap();
+        let extracted_answers = get_extracted_answers(&answers, &config).unwrap();
 
         assert_eq!(
             extracted_answers,
             ExtractedAnswers {
                 commit_type: "feat".into(),
                 scope: Some("space".into()),
-                summary: "✨ add more space".into(),
+                summary: "add more space".into(),
                 body: Some("just never enough space!\n\ncloses #554".into()),
                 is_breaking_change: false,
             }
@@ -372,7 +367,7 @@ mod tests {
 
         assert_eq!(
             message,
-            "feat(space): ✨ add more space\n\njust never enough space!\n\ncloses #554"
+            "feat(space): add more space\n\njust never enough space!\n\ncloses #554"
         );
     }
 }
