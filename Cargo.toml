@@ -26,7 +26,7 @@ indexmap = "1.9"
 openssl-sys = { version = "0.9", features = ["vendored"] }
 requestty = "0.5"
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.7"
+toml = "0.8"
 
 [dev-dependencies]
 rusty-hook = "0.11"
