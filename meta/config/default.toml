@@ -1,3 +1,6 @@
+breaking_changes = true
+issues = true
+
 [[commit_types]]
 name = "feat"
 emoji = "✨"

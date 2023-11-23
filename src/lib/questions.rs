@@ -107,6 +107,8 @@ pub fn create_prompt(
     summary: String,
     use_emoji: bool,
     use_autocomplete: bool,
+    ask_breaking_changes: bool,
+    ask_issues: bool,
     commit_types: &IndexMap<String, CommitType>,
 ) -> Result<Answers> {
     // Scan history for existing scopes we can use
@@ -117,7 +119,7 @@ pub fn create_prompt(
         completions![]
     };
 
-    prompt(vec![
+    let mut questions = vec![
         Question::select(Q_COMMIT_TYPE)
             .message("What type of change are you committing?")
             .page_size(8)
@@ -153,24 +155,38 @@ pub fn create_prompt(
             .message("Provide a longer description of the change. (press enter to skip)")
             .transform(|body, _, backend| write!(backend, "{}", body.replace_emoji_shortcodes()))
             .build(),
-        Question::confirm(Q_IS_BREAKING_CHANGE)
-            .message("Are there any breaking changes?")
-            .default(false)
-            .build(),
-        Question::confirm(Q_HAS_OPEN_ISSUE)
-            .message("Does this change affect any open issues?")
-            .default(false)
-            .build(),
-        Question::input(Q_ISSUE_REFERENCE)
-            .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
-            .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
-                Some(has_open_issue) => has_open_issue.as_bool().unwrap(),
-                None => false,
-            })
-            .validate(|issue_reference, _| validate_issue_reference(issue_reference))
-            .build(),
-    ])
-    .context("could not get answers from prompt")
+    ];
+
+    if ask_breaking_changes {
+        questions.push(
+            Question::confirm(Q_IS_BREAKING_CHANGE)
+                .message("Are there any breaking changes?")
+                .default(false)
+                .build(),
+        );
+    }
+
+    if ask_issues {
+        questions.push(
+            Question::confirm(Q_HAS_OPEN_ISSUE)
+                .message("Does this change affect any open issues?")
+                .default(false)
+                .build(),
+        );
+
+        questions.push(
+            Question::input(Q_ISSUE_REFERENCE)
+                .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
+                .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
+                    Some(has_open_issue) => has_open_issue.as_bool().unwrap(),
+                    None => false,
+                })
+                .validate(|issue_reference, _| validate_issue_reference(issue_reference))
+                .build(),
+        );
+    }
+
+    prompt(questions).context("could not get answers from prompt")
 }
 
 #[cfg(test)]
