@@ -8,7 +8,10 @@ use requestty::{
     Answers, Question,
 };
 
-use crate::{config::CommitType, emoji::ReplaceEmoji};
+use crate::{
+    config::{CommitType, Config},
+    emoji::ReplaceEmoji,
+};
 
 /// These exist just so I don't make a typo when using them
 pub const Q_COMMIT_TYPE: &str = "commit_type";
@@ -102,18 +105,10 @@ fn validate_issue_reference(issue_reference: &str) -> Result<(), String> {
 }
 
 /// Create the interactive prompt
-pub fn create_prompt(
-    repo: &Repository,
-    summary: String,
-    use_emoji: bool,
-    use_autocomplete: bool,
-    ask_breaking_changes: bool,
-    ask_issues: bool,
-    commit_types: &IndexMap<String, CommitType>,
-) -> Result<Answers> {
+pub fn create_prompt(repo: &Repository, summary: String, config: &Config) -> Result<Answers> {
     // Scan history for existing scopes we can use
     // to autocomplete the scope prompt
-    let scopes = if use_autocomplete {
+    let scopes = if config.autocomplete {
         get_existing_scopes(repo)?
     } else {
         completions![]
@@ -126,11 +121,9 @@ pub fn create_prompt(
             .transform(|choice, _, backend| {
                 write!(backend, "{}", transform_commit_type_choice(&choice.text))
             })
-            .choices(
-                commit_types
-                    .iter()
-                    .map(|(_, choice)| format_commit_type_choice(use_emoji, choice, commit_types)),
-            )
+            .choices(config.commit_types.iter().map(|(_, choice)| {
+                format_commit_type_choice(config.emoji, choice, &config.commit_types)
+            }))
             .build(),
         Question::input(Q_SCOPE)
             .message("What is the scope of this change? (press enter to skip)")
@@ -157,7 +150,7 @@ pub fn create_prompt(
             .build(),
     ];
 
-    if ask_breaking_changes {
+    if config.breaking_changes {
         questions.push(
             Question::confirm(Q_IS_BREAKING_CHANGE)
                 .message("Are there any breaking changes?")
@@ -166,7 +159,7 @@ pub fn create_prompt(
         );
     }
 
-    if ask_issues {
+    if config.issues {
         questions.push(
             Question::confirm(Q_HAS_OPEN_ISSUE)
                 .message("Does this change affect any open issues?")
@@ -206,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_format_commit_type_choice() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, None, None).unwrap();
         let commit_types = config.commit_types;
 
         let choice =
@@ -220,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, None, None).unwrap();
         let commit_types = config.commit_types;
 
         let choice =

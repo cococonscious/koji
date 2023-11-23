@@ -5,11 +5,11 @@ use serde::Deserialize;
 use std::{env::current_dir, fs::read_to_string, path::Path};
 
 pub struct Config {
-    pub autocomplete: Option<bool>,
-    pub breaking_changes: Option<bool>,
+    pub autocomplete: bool,
+    pub breaking_changes: bool,
     pub commit_types: IndexMap<String, CommitType>,
-    pub emoji: Option<bool>,
-    pub issues: Option<bool>,
+    pub emoji: bool,
+    pub issues: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -31,7 +31,13 @@ struct ConfigTOML {
 
 impl Config {
     /// Find a config and load it
-    pub fn new(path: Option<String>) -> Result<Self> {
+    pub fn new(
+        path: Option<String>,
+        autocomplete: Option<bool>,
+        breaking_changes: Option<bool>,
+        emoji: Option<bool>,
+        issues: Option<bool>,
+    ) -> Result<Self> {
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
         let default_config: ConfigTOML =
@@ -81,11 +87,11 @@ impl Config {
         }
 
         Ok(Config {
-            autocomplete: config.autocomplete,
-            breaking_changes: config.breaking_changes,
+            autocomplete: autocomplete.unwrap_or(config.autocomplete.unwrap_or(false)),
+            breaking_changes: breaking_changes.unwrap_or(config.breaking_changes.unwrap_or(true)),
             commit_types,
-            emoji: config.emoji,
-            issues: config.issues,
+            emoji: emoji.unwrap_or(config.emoji.unwrap_or(false)),
+            issues: issues.unwrap_or(config.issues.unwrap_or(true)),
         })
     }
 }
@@ -95,8 +101,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_breaking_changes() {
+        let config = Config::new(None, None, None, None, None).unwrap();
+        assert_eq!(config.breaking_changes, true);
+
+        let config = Config::new(None, None, Some(false), None, None).unwrap();
+        assert_eq!(config.breaking_changes, false);
+    }
+
+    #[test]
+    fn test_issues() {
+        let config = Config::new(None, None, None, None, None).unwrap();
+        assert_eq!(config.issues, true);
+
+        let config = Config::new(None, None, None, None, Some(false)).unwrap();
+        assert_eq!(config.issues, false);
+    }
+
+    #[test]
     fn test_commit_types() {
-        let config = Config::new(None).unwrap();
+        let config = Config::new(None, None, None, Some(true), None).unwrap();
         let commit_types = config.commit_types;
 
         assert_eq!(

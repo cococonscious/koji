@@ -84,39 +84,19 @@ fn main() -> Result<()> {
     }
 
     // Load config
-    let config = Config::new(config)?;
-
-    // Use value of `autocomplete` if passed in, otherwise use value from config
-    let autocomplete = autocomplete.unwrap_or(config.autocomplete.unwrap_or(false));
-
-    // Use value of `breaking_changes` if passed in, otherwise use value from config
-    let breaking_changes = breaking_changes.unwrap_or(config.breaking_changes.unwrap_or(true));
-
-    // Use value of `emoji` if passed in, otherwise use value from config
-    let emoji = emoji.unwrap_or(config.emoji.unwrap_or(false));
-
-    // Use value of `issues` if passed in, otherwise use value from config
-    let issues = issues.unwrap_or(config.issues.unwrap_or(true));
+    let config = Config::new(config, autocomplete, breaking_changes, emoji, issues)?;
 
     // Get answers from interactive prompt
-    let answers = create_prompt(
-        &repo,
-        commit_message,
-        emoji,
-        autocomplete,
-        breaking_changes,
-        issues,
-        &config.commit_types,
-    )?;
+    let answers = create_prompt(&repo, commit_message, &config)?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {
+        body,
         commit_type,
+        is_breaking_change,
         scope,
         summary,
-        body,
-        is_breaking_change,
-    } = get_extracted_answers(&answers, emoji, &config.commit_types)?;
+    } = get_extracted_answers(&answers, &config)?;
 
     // Do the thing!
     if hook {
