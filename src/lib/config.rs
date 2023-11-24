@@ -10,6 +10,7 @@ pub struct Config {
     pub commit_types: IndexMap<String, CommitType>,
     pub emoji: bool,
     pub issues: bool,
+    pub sign: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -27,17 +28,31 @@ struct ConfigTOML {
     commit_types: Vec<CommitType>,
     pub emoji: Option<bool>,
     pub issues: Option<bool>,
+    pub sign: Option<bool>,
+}
+
+#[derive(Default)]
+pub struct ConfigArgs {
+    pub path: Option<String>,
+    pub autocomplete: Option<bool>,
+    pub breaking_changes: Option<bool>,
+    pub emoji: Option<bool>,
+    pub issues: Option<bool>,
+    pub sign: Option<bool>,
 }
 
 impl Config {
     /// Find a config and load it
-    pub fn new(
-        path: Option<String>,
-        autocomplete: Option<bool>,
-        breaking_changes: Option<bool>,
-        emoji: Option<bool>,
-        issues: Option<bool>,
-    ) -> Result<Self> {
+    pub fn new(args: Option<ConfigArgs>) -> Result<Self> {
+        let ConfigArgs {
+            path,
+            autocomplete,
+            breaking_changes,
+            emoji,
+            issues,
+            sign,
+        } = args.unwrap_or_default();
+
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
         let default_config: ConfigTOML =
@@ -92,6 +107,7 @@ impl Config {
             commit_types,
             emoji: emoji.unwrap_or(config.emoji.unwrap_or(false)),
             issues: issues.unwrap_or(config.issues.unwrap_or(true)),
+            sign: sign.unwrap_or(config.sign.unwrap_or(false)),
         })
     }
 }
@@ -102,25 +118,33 @@ mod tests {
 
     #[test]
     fn test_breaking_changes() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         assert_eq!(config.breaking_changes, true);
 
-        let config = Config::new(None, None, Some(false), None, None).unwrap();
+        let config = Config::new(Some(ConfigArgs {
+            breaking_changes: Some(false),
+            ..Default::default()
+        }))
+        .unwrap();
         assert_eq!(config.breaking_changes, false);
     }
 
     #[test]
     fn test_issues() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         assert_eq!(config.issues, true);
 
-        let config = Config::new(None, None, None, None, Some(false)).unwrap();
+        let config = Config::new(Some(ConfigArgs {
+            issues: Some(false),
+            ..Default::default()
+        }))
+        .unwrap();
         assert_eq!(config.issues, false);
     }
 
     #[test]
     fn test_commit_types() {
-        let config = Config::new(None, None, None, Some(true), None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         assert_eq!(

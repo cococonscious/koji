@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_format_commit_type_choice() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         let choice =
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_render_commit_type_choice_with_emoji() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         let choice =

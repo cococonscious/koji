@@ -37,6 +37,7 @@ pub fn commit(
     summary: String,
     body: Option<String>,
     is_breaking_change: bool,
+    sign: bool,
 ) -> Result<()> {
     let cocogitto = CocoGitto::get()?;
 
@@ -47,7 +48,7 @@ pub fn commit(
         body,
         None,
         is_breaking_change,
-        false,
+        sign,
     )?;
 
     Ok(())
