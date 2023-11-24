@@ -7,7 +7,7 @@ use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, write_commit_msg};
-use koji::config::Config;
+use koji::config::{Config, ConfigArgs};
 use koji::questions::create_prompt;
 
 #[derive(Parser, Debug)]
@@ -53,6 +53,12 @@ struct Args {
         help = "Enables issue prompt, which will append a reference to an issue in the commit body"
     )]
     issues: Option<bool>,
+
+    #[arg(
+        long,
+        help = "Sign the commit using the user's GPG key, if one is configured"
+    )]
+    sign: Option<bool>,
 }
 
 fn main() -> Result<()> {
@@ -64,6 +70,7 @@ fn main() -> Result<()> {
         emoji,
         hook,
         issues,
+        sign,
     } = Args::parse();
 
     // Find repo
@@ -84,7 +91,14 @@ fn main() -> Result<()> {
     }
 
     // Load config
-    let config = Config::new(config, autocomplete, breaking_changes, emoji, issues)?;
+    let config = Config::new(Some(ConfigArgs {
+        autocomplete,
+        breaking_changes,
+        emoji,
+        issues,
+        path: config,
+        sign,
+    }))?;
 
     // Get answers from interactive prompt
     let answers = create_prompt(&repo, commit_message, &config)?;
@@ -102,7 +116,14 @@ fn main() -> Result<()> {
     if hook {
         write_commit_msg(repo, commit_type, scope, summary, body, is_breaking_change)?;
     } else {
-        commit(commit_type, scope, summary, body, is_breaking_change)?;
+        commit(
+            commit_type,
+            scope,
+            summary,
+            body,
+            is_breaking_change,
+            config.sign,
+        )?;
     }
 
     Ok(())

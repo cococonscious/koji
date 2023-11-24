@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_get_summary() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges".into()));
@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_emoji() {
-        let config = Config::new(None, None, None, Some(true), None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges".into()));
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_get_summary_with_shortcode() {
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
         let answer = Some(Answer::String("needed more badges :badger:".into()));
@@ -341,7 +341,7 @@ mod tests {
             ),
         ]));
 
-        let config = Config::new(None, None, None, None, None).unwrap();
+        let config = Config::new(None).unwrap();
         let extracted_answers = get_extracted_answers(&answers, &config).unwrap();
 
         assert_eq!(
