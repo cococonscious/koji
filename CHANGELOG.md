@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.1.0](https://github.com/its-danny/koji/compare/2.0.0..2.1.0) - 2023-11-24
+#### Features
+- allow signing commits - ([66b9d9e](https://github.com/its-danny/koji/commit/66b9d9e42e8b44b895e535a8ceaf2d399f2fbbee)) - Danny Tatom
+
+- - -
+
 ## [2.0.0](https://github.com/its-danny/koji/compare/1.5.3..2.0.0) - 2023-11-23
 #### Build system
 - **(deps)** update indexmap to 2.1 - ([72ba166](https://github.com/its-danny/koji/commit/72ba1660980ab8da47b1b0d1aac6cacd8a5ea3c7)) - Danny Tatom
