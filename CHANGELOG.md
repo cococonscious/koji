@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.2.0](https://github.com/its-danny/koji/compare/2.1.0..2.2.0) - 2024-01-06
+#### Build system
+- **(deps)** update cocogitto to 6.0 - ([503759c](https://github.com/its-danny/koji/commit/503759c6368e85b73682c8792c272297eea897ee)) - Danny Tatom
+
+- - -
+
 ## [2.1.0](https://github.com/its-danny/koji/compare/2.0.0..2.1.0) - 2023-11-24
 #### Features
 - allow signing commits - ([66b9d9e](https://github.com/its-danny/koji/commit/66b9d9e42e8b44b895e535a8ceaf2d399f2fbbee)) - Danny Tatom
