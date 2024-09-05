@@ -5,15 +5,14 @@
   built on [cocogitto](https://github.com/oknozor/cocogitto) and inspired by
   [cz-cli](https://github.com/commitizen/cz-cli).
   
-  [![Current Release](https://img.shields.io/github/v/release/its-danny/koji)](https://github.com/its-danny/koji/releases)
-  [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/its-danny/koji/ci.yml?brainch=main)](https://github.com/its-danny/koji/actions)
-  [![Codecov](https://img.shields.io/codecov/c/gh/its-danny/koji)](https://codecov.io/gh/its-danny/koji)
-  [![Dependency Status](https://deps.rs/repo/github/its-danny/koji/status.svg)](https://deps.rs/repo/github/its-danny/koji)
+  [![Current Release](https://img.shields.io/github/v/release/cococonscious/koji)](https://github.com/cococonscious/koji/releases)
+  [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/cococonscious/koji/ci.yml?brainch=main)](https://github.com/cococonscious/koji/actions)
+  [![Codecov](https://img.shields.io/codecov/c/gh/cococonscious/koji)](https://codecov.io/gh/cococonscious/koji)
+  [![Dependency Status](https://deps.rs/repo/github/cococonscious/koji/status.svg)](https://deps.rs/repo/github/cococonscious/koji)
   [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-pink.svg)](https://conventionalcommits.org)
-  [![License](https://img.shields.io/github/license/its-danny/koji)](LICENSE)
-  ![Looking for maintainer](https://img.shields.io/badge/status-looking%20for%20maintainer-orange)
+  [![License](https://img.shields.io/github/license/cococonscious/koji)](LICENSE)
 
-  [![Commit with koji](https://github.com/its-danny/koji/raw/main/meta/demo.gif)](https://github.com/its-danny/koji/raw/main/meta/demo.gif)
+  [![Commit with koji](https://github.com/cococonscious/koji/raw/main/meta/demo.gif)](https://github.com/cococonscious/koji/raw/main/meta/demo.gif)
 </div>
 
 ## Features
@@ -103,7 +102,7 @@ Config values are prioritized in the following order:
 - Read from file passed in via `--config`
 - `.koji.toml` in the working directory
 - `~/.config/koji/config.toml`
-- The [default](https://github.com/its-danny/koji/blob/main/meta/config/default.toml) config
+- The [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml) config
 
 ### Options
 
@@ -128,7 +127,7 @@ breaking_changes = true
 
 - Type: `Vec<CommitType>`
 - Optional: `true`
-- Description: A list of commit types to use instead of the [default](https://github.com/its-danny/koji/blob/main/meta/config/default.toml).
+- Description: A list of commit types to use instead of the [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml).
 ```toml
 [[commit_types]]
 name = "feat"
