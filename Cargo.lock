@@ -726,7 +726,6 @@ dependencies = [
  "emojis",
  "git2",
  "indexmap 2.1.0",
- "openssl-sys",
  "requestty",
  "rusty-hook",
  "serde",
