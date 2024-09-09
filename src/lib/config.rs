@@ -119,27 +119,27 @@ mod tests {
     #[test]
     fn test_breaking_changes() {
         let config = Config::new(None).unwrap();
-        assert_eq!(config.breaking_changes, true);
+        assert!(config.breaking_changes);
 
         let config = Config::new(Some(ConfigArgs {
             breaking_changes: Some(false),
             ..Default::default()
         }))
         .unwrap();
-        assert_eq!(config.breaking_changes, false);
+        assert!(!config.breaking_changes);
     }
 
     #[test]
     fn test_issues() {
         let config = Config::new(None).unwrap();
-        assert_eq!(config.issues, true);
+        assert!(config.issues);
 
         let config = Config::new(Some(ConfigArgs {
             issues: Some(false),
             ..Default::default()
         }))
         .unwrap();
-        assert_eq!(config.issues, false);
+        assert!(!config.issues);
     }
 
     #[test]

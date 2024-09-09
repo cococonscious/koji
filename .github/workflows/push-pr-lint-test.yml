@@ -1,0 +1,36 @@
+name: push-pr-lint-test
+
+permissions:
+  contents: read
+  checks: write
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: cargo test, tarpaulin & codecov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-features
+      - run: cargo install cargo-tarpaulin
+      - run: cargo tarpaulin --out Xml
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  lints:
+    name: crago clippy & fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo fmt --all -- --check
