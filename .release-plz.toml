@@ -1,6 +1,5 @@
 [[package]]
 name = "koji"
-publish = false
 
 [changelog]
 commit_parsers = [
