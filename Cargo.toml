@@ -2,7 +2,7 @@
 name = "koji"
 version = "2.2.0"
 edition = "2021"
-authors = ["Danny Tatom <its.danny@hey.com>"]
+authors = ["Finley Thomalla <finley@thomalla.ch>", "Danny Tatom <its.danny@hey.com>"]
 description = "An interactive CLI for creating conventional commits."
 documentation = "https://docs.rs/koji"
 repository = "https://github.com/cococonscious/koji"
@@ -23,9 +23,8 @@ cocogitto = { version = "6.0", default-features = false }
 conventional_commit_parser = "0.9"
 dirs = "5.0"
 emojis = "0.6"
-git2 = "0.18"
+git2 = { version = "0.18", features = ["vendored-openssl"] }
 indexmap = "2.1"
-openssl-sys = { version = "0.9", features = ["vendored"] }
 requestty = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
