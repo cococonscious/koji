@@ -2,7 +2,7 @@
 name = "koji"
 version = "2.2.0"
 edition = "2021"
-authors = ["Danny Tatom <its.danny@hey.com>"]
+authors = ["Finley Thomalla <finley@thomalla.ch>", "Danny Tatom <its.danny@hey.com>"]
 description = "An interactive CLI for creating conventional commits."
 documentation = "https://docs.rs/koji"
 repository = "https://github.com/cococonscious/koji"
