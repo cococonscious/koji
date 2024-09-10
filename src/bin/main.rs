@@ -101,7 +101,7 @@ fn main() -> Result<()> {
     }))?;
 
     // Get answers from interactive prompt
-    let answers = create_prompt(&repo, commit_message, &config)?;
+    let answers = create_prompt(commit_message, &config)?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {

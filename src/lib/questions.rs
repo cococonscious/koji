@@ -1,35 +1,26 @@
+use std::{collections::HashSet, sync::Arc};
+
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
 use indexmap::IndexMap;
-use requestty::{
-    prompt,
-    question::{completions, Completions},
-    Answers, Question,
+use inquire::{
+    validator::{StringValidator, Validation},
+    Confirm, CustomUserError, Select, Text,
 };
 
 use crate::{
     config::{CommitType, Config},
-    emoji::ReplaceEmoji,
 };
 
-/// These exist just so I don't make a typo when using them
-pub const Q_COMMIT_TYPE: &str = "commit_type";
-pub const Q_SCOPE: &str = "scope";
-pub const Q_SUMMARY: &str = "summary";
-pub const Q_BODY: &str = "body";
-pub const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
-pub const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
-pub const Q_ISSUE_REFERENCE: &str = "issue_reference";
-
 /// Get a unique list of existing scopes in the commit history
-fn get_existing_scopes(repo: &Repository) -> Result<Completions<String>> {
+fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
     let mut walk = repo.revwalk()?;
 
     walk.push_head()?;
     walk.set_sorting(git2::Sort::TIME)?;
 
-    let mut scopes: Completions<String> = Completions::new();
+    let mut scopes: Vec<String> = Vec::new();
 
     for id in walk {
         if let Some(summary) = repo.find_commit(id?)?.summary() {
@@ -37,7 +28,6 @@ fn get_existing_scopes(repo: &Repository) -> Result<Completions<String>> {
             // invalid commit message should just be ignored
             if let Ok(parsed) = parse_summary(summary) {
                 let scope = parsed.scope;
-
                 if let Some(scope) = scope {
                     if !scopes.contains(&scope) {
                         scopes.push(scope)
@@ -86,100 +76,149 @@ fn format_commit_type_choice(
     format!("{name}:{emoji:>width$}{description}")
 }
 
-/// Validate summary
-fn validate_summary(summary: &str) -> Result<(), String> {
-    if !summary.is_empty() {
-        Ok(())
-    } else {
-        Err("A summary is required.".into())
+fn validate_summary(input: &str) -> Result<Validation, CustomUserError> {
+    match input.trim().is_empty() {
+        false => Ok(Validation::Valid),
+        true => Ok(Validation::Invalid("A summary is required".into())),
     }
 }
 
-/// Validate issue reference
-fn validate_issue_reference(issue_reference: &str) -> Result<(), String> {
-    if !issue_reference.is_empty() {
-        Ok(())
-    } else {
-        Err("An issue reference is required if this commit is related to an open issue.".into())
+fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> {
+    match input.trim().is_empty() {
+        false => Ok(Validation::Valid),
+        true => Ok(Validation::Invalid("An issue reference is required".into())),
     }
+}
+
+pub fn prompt_type(config: &Config) -> Result<String> {
+    let type_values = config
+        .commit_types
+        .iter()
+        .map(|(_, choice)| format_commit_type_choice(config.emoji, choice, &config.commit_types))
+        .collect();
+
+    let selected_type =
+        Select::new("What type of change are you committing?", type_values)
+        .with_formatter(&|v| transform_commit_type_choice(&v.value))
+        .prompt()?;
+
+    Ok(transform_commit_type_choice(&selected_type))
+}
+
+pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    fn scope_autocompleter_empty(_: &str) -> Result<Vec<String>, CustomUserError> {
+        Ok(vec![])
+    }
+    fn scope_autocompleter(val: &str) -> Result<Vec<String>, CustomUserError> {
+        let repo = Repository::discover(std::env::current_dir()?)
+            .context("could not find git repository")?;
+        let existing_scopes = get_existing_scopes(&repo)?;
+
+        Ok(existing_scopes
+            .iter()
+            .filter(|s| s.contains(&val))
+            .map(|s| s.clone())
+            .collect())
+    }
+
+    let selected_scope = Text::new("What's the scope of this change? (<esc> or <return> to skip)")
+        .with_autocomplete(if config.autocomplete {
+            scope_autocompleter
+        } else {
+            scope_autocompleter_empty
+        })
+        .prompt_skippable()?;
+
+    Ok(selected_scope)
+}
+
+pub fn prompt_summary() -> Result<String> {
+    let summary = Text::new("Write a short, imperative tense description of the change.")
+        .with_validator(validate_summary)
+        .prompt()?;
+
+    Ok(summary)
+}
+
+pub fn prompt_body() -> Result<Option<String>> {
+    let summary =
+        Text::new("Provide a longer description of the change. (<esc> or <return> to skip)")
+            .prompt_skippable()?;
+
+    Ok(summary)
+}
+
+pub fn prompt_breaking() -> Result<bool> {
+    let answer = Confirm::new("Are there any breaking changes?")
+        .with_default(false)
+        .with_help_message("test 123")
+        .prompt()?;
+
+    Ok(answer)
+}
+
+pub fn prompt_issues() -> Result<bool> {
+    let answer = Confirm::new("Does this change affect any open issues?")
+        .with_default(false)
+        .prompt()?;
+
+    Ok(answer)
+}
+
+pub fn prompt_issue_text() -> Result<String> {
+
+    let summary = Text::new("Add the issue reference.")
+        .with_help_message("e.g. \"closes #123\"")
+        .with_validator(validate_issue_reference)
+        .prompt()?;
+
+    Ok(summary)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Answers {
+    pub commit_type: String,
+    pub scope: Option<String>,
+    pub summary: String,
+    pub body: Option<String>,
+    pub issue_footer: Option<String>,
+    pub is_breaking_change: bool,
 }
 
 /// Create the interactive prompt
-pub fn create_prompt(repo: &Repository, summary: String, config: &Config) -> Result<Answers> {
-    // Scan history for existing scopes we can use
-    // to autocomplete the scope prompt
-    let scopes = if config.autocomplete {
-        get_existing_scopes(repo)?
-    } else {
-        completions![]
-    };
+pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
+    let _type = prompt_type(config)?;
+    let _scope = prompt_scope(config)?;
+    let _summary = prompt_summary()?;
+    let _body = prompt_body()?;
 
-    let mut questions = vec![
-        Question::select(Q_COMMIT_TYPE)
-            .message("What type of change are you committing?")
-            .page_size(8)
-            .transform(|choice, _, backend| {
-                write!(backend, "{}", transform_commit_type_choice(&choice.text))
-            })
-            .choices(config.commit_types.iter().map(|(_, choice)| {
-                format_commit_type_choice(config.emoji, choice, &config.commit_types)
-            }))
-            .build(),
-        Question::input(Q_SCOPE)
-            .message("What is the scope of this change? (press enter to skip)")
-            .transform(|scope, _, backend| write!(backend, "{}", scope.replace_emoji_shortcodes()))
-            .auto_complete(|scope, _| {
-                if scopes.is_empty() {
-                    completions![scope]
-                } else {
-                    scopes.to_owned()
-                }
-            })
-            .build(),
-        Question::input(Q_SUMMARY)
-            .message("Write a short, imperative tense description of the change.")
-            .transform(|summary, _, backend| {
-                write!(backend, "{}", summary.replace_emoji_shortcodes())
-            })
-            .validate(|summary, _| validate_summary(summary))
-            .default(summary)
-            .build(),
-        Question::input(Q_BODY)
-            .message("Provide a longer description of the change. (press enter to skip)")
-            .transform(|body, _, backend| write!(backend, "{}", body.replace_emoji_shortcodes()))
-            .build(),
-    ];
-
+    let mut _breaking = false;
     if config.breaking_changes {
-        questions.push(
-            Question::confirm(Q_IS_BREAKING_CHANGE)
-                .message("Are there any breaking changes?")
-                .default(false)
-                .build(),
-        );
+        _breaking = prompt_breaking()?;
     }
 
+    let mut _issue_footer = None;
     if config.issues {
-        questions.push(
-            Question::confirm(Q_HAS_OPEN_ISSUE)
-                .message("Does this change affect any open issues?")
-                .default(false)
-                .build(),
-        );
-
-        questions.push(
-            Question::input(Q_ISSUE_REFERENCE)
-                .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
-                .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
-                    Some(has_open_issue) => has_open_issue.as_bool().unwrap(),
-                    None => false,
-                })
-                .validate(|issue_reference, _| validate_issue_reference(issue_reference))
-                .build(),
-        );
+        if prompt_issues()? == true {
+            _issue_footer = Some(prompt_issue_text()?);
+        }
     }
 
-    prompt(questions).context("could not get answers from prompt")
+    println!("{:?}", _type);
+    println!("{:?}", _scope);
+    println!("{:?}", _summary);
+    println!("{:?}", _body);
+    println!("{:?}", _breaking);
+    println!("{:?}", _issue_footer);
+
+    Ok(Answers {
+        commit_type: _type,
+        scope: _scope,
+        summary: _summary,
+        body: _body,
+        issue_footer: _issue_footer,
+        is_breaking_change: _breaking
+    })
 }
 
 #[cfg(test)]
@@ -230,10 +269,12 @@ mod tests {
         let validated = validate_summary("needed more badges :badger:");
 
         assert!(validated.is_ok());
+        assert!(validated.expect("Summary should be OK").eq(&Validation::Valid));
 
         let validated = validate_summary("");
 
-        assert!(validated.is_err(), "A description is required.");
+        assert!(validated.is_ok());
+        assert!(validated.expect("Summary should be OK").eq(&Validation::Invalid("A summary is required".into())));
     }
 
     #[test]
@@ -241,12 +282,12 @@ mod tests {
         let validated = validate_issue_reference("closes #123");
 
         assert!(validated.is_ok());
+        assert!(validated.expect("Issue reference should be OK").eq(&Validation::Valid));
 
         let validated = validate_issue_reference("");
 
-        assert!(
-            validated.is_err(),
-            "An issue reference is required if this commit is related to an open issue."
-        );
+        assert!(validated.is_ok());
+        assert!(validated.expect("Summary should be OK").eq(&Validation::Invalid("An issue reference is required".into())));
+
     }
 }
