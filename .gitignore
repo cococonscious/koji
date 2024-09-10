@@ -1,5 +1,20 @@
-# Created by https://www.toptal.com/developers/gitignore/api/rust,intellij+all,vim,visualstudiocode
-# Edit at https://www.toptal.com/developers/gitignore?templates=rust,intellij+all,vim,visualstudiocode
+# Created by https://www.toptal.com/developers/gitignore/api/git,vim,rust,intellij+all,visualstudiocode
+# Edit at https://www.toptal.com/developers/gitignore?templates=git,vim,rust,intellij+all,visualstudiocode
+
+### Git ###
+# Created by git for backups. To disable backups in Git:
+# $ git config --global mergetool.keepBackup false
+*.orig
+
+# Created by git when using merge tools for conflicts
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+*_BACKUP_*.txt
+*_BASE_*.txt
+*_LOCAL_*.txt
+*_REMOTE_*.txt
 
 ### Intellij+all ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -141,4 +156,4 @@ tags
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/rust,intellij+all,vim,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/git,vim,rust,intellij+all,visualstudiocode
