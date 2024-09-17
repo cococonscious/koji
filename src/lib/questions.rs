@@ -123,9 +123,14 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
     Ok(selected_scope)
 }
 
-pub fn prompt_summary(summary: String) -> Result<String> {
+pub fn prompt_summary(msg: String) -> Result<String> {
+    let previous_summary = match parse_summary(&msg) {
+        Ok(parsed) => parsed.summary,
+        Err(_) => "".into(),
+    };
+
     let summary = Text::new("Write a short, imperative tense description of the change.")
-        .with_default(summary.as_str())
+        .with_placeholder(&previous_summary)
         .with_validator(validate_summary)
         .prompt()?;
 
@@ -135,15 +140,18 @@ pub fn prompt_summary(summary: String) -> Result<String> {
 pub fn prompt_body() -> Result<Option<String>> {
     let summary =
         Text::new("Provide a longer description of the change. (<esc> or <return> to skip)")
+            .with_help_message("Use '\\n' for newlines")
             .prompt_skippable()?;
 
-    Ok(summary)
+    match summary {
+        Some(summary) => Ok(Some(summary.replace("\\n", "\n"))),
+        None => Ok(None),
+    }
 }
 
 pub fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
         .with_default(false)
-        .with_help_message("test 123")
         .prompt()?;
 
     Ok(answer)
@@ -177,11 +185,10 @@ pub struct Answers {
 }
 
 /// Create the interactive prompt
-// TODO use summary
-pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
+pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     let _type = prompt_type(config)?;
     let _scope = prompt_scope(config)?;
-    let _summary = prompt_summary(summary)?;
+    let _summary = prompt_summary(last_message)?;
     let _body = prompt_body()?;
 
     let mut _breaking = false;
@@ -193,13 +200,6 @@ pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
     if config.issues && prompt_issues()? {
         _issue_footer = Some(prompt_issue_text()?);
     }
-
-    println!("{:?}", _type);
-    println!("{:?}", _scope);
-    println!("{:?}", _summary);
-    println!("{:?}", _body);
-    println!("{:?}", _breaking);
-    println!("{:?}", _issue_footer);
 
     Ok(Answers {
         commit_type: _type,
