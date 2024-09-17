@@ -9,7 +9,7 @@ use crate::{
 
 /// Get the summary, prepending a relevant emoji if enabled
 fn get_summary(
-    answer: String,
+    answer: &str,
     use_emoji: bool,
     commit_type: &str,
     commit_types: &IndexMap<String, CommitType>,
@@ -55,7 +55,7 @@ pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<Extrac
         commit_type: answers.commit_type.clone(),
         scope: answers.scope,
         summary: get_summary(
-            answers.summary,
+            &answers.summary,
             config.emoji,
             &answers.commit_type,
             &config.commit_types,
@@ -77,7 +77,7 @@ mod tests {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = "needed more badges".to_owned();
+        let answer = "needed more badges";
 
         assert_eq!(
             get_summary(answer, false, "docs", &commit_types).unwrap(),
@@ -90,7 +90,7 @@ mod tests {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = "needed more badges".to_owned();
+        let answer = "needed more badges";
 
         assert_eq!(
             get_summary(answer, true, "docs", &commit_types).unwrap(),
@@ -103,7 +103,7 @@ mod tests {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = "needed more badges :badger:".to_owned();
+        let answer = "needed more badges :badger:";
 
         assert_eq!(
             get_summary(answer, false, "docs", &commit_types).unwrap(),

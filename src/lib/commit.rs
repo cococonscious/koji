@@ -6,7 +6,7 @@ use git2::Repository;
 
 /// Output a commit message to `.git/COMMIT_EDITMSG`
 pub fn write_commit_msg(
-    repo: Repository,
+    repo: &Repository,
     commit_type: String,
     scope: Option<String>,
     summary: String,

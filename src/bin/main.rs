@@ -114,7 +114,7 @@ fn main() -> Result<()> {
 
     // Do the thing!
     if hook {
-        write_commit_msg(repo, commit_type, scope, summary, body, is_breaking_change)?;
+        write_commit_msg(&repo, commit_type, scope, summary, body, is_breaking_change)?;
     } else {
         commit(
             commit_type,

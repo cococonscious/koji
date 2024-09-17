@@ -98,7 +98,7 @@ impl Config {
         // Gather up commit types
         let mut commit_types = IndexMap::new();
         for commit_type in config.commit_types.iter() {
-            commit_types.insert(commit_type.name.to_owned(), commit_type.to_owned());
+            commit_types.insert(commit_type.name.clone(), commit_type.to_owned());
         }
 
         Ok(Config {

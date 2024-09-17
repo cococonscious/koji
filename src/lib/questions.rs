@@ -1,10 +1,22 @@
+use crate::config::{CommitType, Config};
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
 use indexmap::IndexMap;
+use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
 use inquire::{validator::Validation, Confirm, CustomUserError, Select, Text};
 
-use crate::config::{CommitType, Config};
+fn get_skip_hint() -> &'static str {
+    "<esc> or <return> to skip"
+}
+
+fn get_render_config() -> RenderConfig<'static> {
+    RenderConfig {
+        prompt: StyleSheet::new().with_attr(Attributes::BOLD),
+        default_value: StyleSheet::new().with_fg(Color::Grey),
+        ..RenderConfig::default()
+    }
+}
 
 /// Get a unique list of existing scopes in the commit history
 fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
@@ -22,7 +34,7 @@ fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
             if let Ok(parsed) = parse_summary(summary) {
                 if let Some(scope) = parsed.scope {
                     if !scopes.contains(&scope) {
-                        scopes.push(scope)
+                        scopes.push(scope);
                     }
                 }
             }
@@ -51,10 +63,10 @@ fn format_commit_type_choice(
         if let Some(emoji) = &commit_type.emoji {
             format!("{emoji} ")
         } else {
-            "".into()
+            String::new()
         }
     } else {
-        "".into()
+        String::new()
     };
 
     let width = commit_types
@@ -76,9 +88,10 @@ fn validate_summary(input: &str) -> Result<Validation, CustomUserError> {
 }
 
 fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> {
-    match input.trim().is_empty() {
-        false => Ok(Validation::Valid),
-        true => Ok(Validation::Invalid("An issue reference is required".into())),
+    if input.trim().is_empty() {
+        Ok(Validation::Invalid("An issue reference is required".into()))
+    } else {
+        Ok(Validation::Valid)
     }
 }
 
@@ -90,6 +103,7 @@ pub fn prompt_type(config: &Config) -> Result<String> {
         .collect();
 
     let selected_type = Select::new("What type of change are you committing?", type_values)
+        .with_render_config(get_render_config())
         .with_formatter(&|v| transform_commit_type_choice(v.value))
         .prompt()?;
 
@@ -112,7 +126,18 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
             .collect())
     }
 
-    let selected_scope = Text::new("What's the scope of this change? (<esc> or <return> to skip)")
+    let help_message = format!(
+        "{}, {}",
+        "↑↓ to move, tab to autocomplete, enter to submit",
+        get_skip_hint()
+    );
+
+    let selected_scope = Text::new("What's the scope of this change?")
+        .with_render_config(RenderConfig {
+            option: StyleSheet::new().with_fg(Color::Grey),
+            ..get_render_config()
+        })
+        .with_help_message(help_message.as_str())
         .with_autocomplete(if config.autocomplete {
             scope_autocompleter
         } else {
@@ -129,7 +154,8 @@ pub fn prompt_summary(msg: String) -> Result<String> {
         Err(_) => "".into(),
     };
 
-    let summary = Text::new("Write a short, imperative tense description of the change.")
+    let summary = Text::new("Write a short, imperative tense description of the change:")
+        .with_render_config(get_render_config())
         .with_placeholder(&previous_summary)
         .with_validator(validate_summary)
         .prompt()?;
@@ -138,10 +164,16 @@ pub fn prompt_summary(msg: String) -> Result<String> {
 }
 
 pub fn prompt_body() -> Result<Option<String>> {
-    let summary =
-        Text::new("Provide a longer description of the change. (<esc> or <return> to skip)")
-            .with_help_message("Use '\\n' for newlines")
-            .prompt_skippable()?;
+    let help_message = format!(
+        "{}, {}",
+        "Use '\\n' for newlines, ",
+        get_skip_hint()
+    );
+
+    let summary = Text::new("Provide a longer description of the change:")
+        .with_render_config(get_render_config())
+        .with_help_message(help_message.as_str())
+        .prompt_skippable()?;
 
     if let Some(summary) = summary {
         if summary.is_empty() {
@@ -155,6 +187,7 @@ pub fn prompt_body() -> Result<Option<String>> {
 
 pub fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
+        .with_render_config(get_render_config())
         .with_default(false)
         .prompt()?;
 
@@ -163,6 +196,7 @@ pub fn prompt_breaking() -> Result<bool> {
 
 pub fn prompt_issues() -> Result<bool> {
     let answer = Confirm::new("Does this change affect any open issues?")
+        .with_render_config(get_render_config())
         .with_default(false)
         .prompt()?;
 
@@ -170,7 +204,8 @@ pub fn prompt_issues() -> Result<bool> {
 }
 
 pub fn prompt_issue_text() -> Result<String> {
-    let summary = Text::new("Add the issue reference.")
+    let summary = Text::new("Add the issue reference:")
+        .with_render_config(get_render_config())
         .with_help_message("e.g. \"closes #123\"")
         .with_validator(validate_issue_reference)
         .prompt()?;
@@ -190,28 +225,28 @@ pub struct Answers {
 
 /// Create the interactive prompt
 pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
-    let _type = prompt_type(config)?;
-    let _scope = prompt_scope(config)?;
-    let _summary = prompt_summary(last_message)?;
-    let _body = prompt_body()?;
+    let commit_type = prompt_type(config)?;
+    let scope = prompt_scope(config)?;
+    let summary = prompt_summary(last_message)?;
+    let body = prompt_body()?;
 
-    let mut _breaking = false;
+    let mut breaking = false;
     if config.breaking_changes {
-        _breaking = prompt_breaking()?;
+        breaking = prompt_breaking()?;
     }
 
-    let mut _issue_footer = None;
+    let mut issue_footer = None;
     if config.issues && prompt_issues()? {
-        _issue_footer = Some(prompt_issue_text()?);
+        issue_footer = Some(prompt_issue_text()?);
     }
 
     Ok(Answers {
-        commit_type: _type,
-        scope: _scope,
-        summary: _summary,
-        body: _body,
-        issue_footer: _issue_footer,
-        is_breaking_change: _breaking,
+        commit_type,
+        scope,
+        summary,
+        body,
+        issue_footer,
+        is_breaking_change: breaking,
     })
 }
 
