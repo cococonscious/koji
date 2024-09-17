@@ -1,113 +1,30 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use indexmap::IndexMap;
-use requestty::Answer;
 
 use crate::{
     config::{CommitType, Config},
     emoji::ReplaceEmoji,
-    questions::{
-        Answers
-    },
+    questions::Answers,
 };
-
-/// Parse the commit type out of the menu choice
-/// e.g. `feat: A new feature` -> `feat`
-fn get_commit_type(answer: Option<&Answer>) -> Result<&str> {
-    answer
-        .context("could not get commit type")?
-        .as_list_item()
-        .context("could not convert commit type to list item")?
-        .text
-        .split(':')
-        .next()
-        .context("could not extract commit type")
-}
-
-/// Get the scope, returning `None` if it's an empty string
-fn get_scope(answer: Option<&Answer>) -> Result<Option<String>> {
-    answer
-        .context("could not get scope")?
-        .as_string()
-        .context("could not convert scope to string")
-        .map(|scope| {
-            if scope.is_empty() {
-                None
-            } else {
-                Some(scope.replace_emoji_shortcodes())
-            }
-        })
-}
 
 /// Get the summary, prepending a relevant emoji if enabled
 fn get_summary(
-    answer: Option<&Answer>,
+    answer: String,
     use_emoji: bool,
     commit_type: &str,
     commit_types: &IndexMap<String, CommitType>,
 ) -> Result<String> {
-    answer
-        .context("could not get summary")?
-        .as_string()
-        .context("could not convert summary to string")
-        .map(|summary| {
-            let commit_type = commit_types.get(commit_type).unwrap();
-            let use_emoji = use_emoji && commit_type.emoji.is_some();
-            let summary = summary.replace_emoji_shortcodes();
+    let commit_type = commit_types.get(commit_type).unwrap();
+    let use_emoji = use_emoji && commit_type.emoji.is_some();
+    let summary = answer.replace_emoji_shortcodes();
 
-            if use_emoji {
-                if let Some(emoji) = &commit_type.emoji {
-                    format!("{emoji} {summary}")
-                } else {
-                    summary
-                }
-            } else {
-                summary
-            }
-        })
-}
-
-/// Get the body, returning `None` if it's an empty string
-fn get_body(answer: Option<&Answer>) -> Result<Option<String>> {
-    answer
-        .context("could not get body")?
-        .as_string()
-        .context("could not convert body to string")
-        .map(|body| {
-            if body.is_empty() {
-                None
-            } else {
-                Some(body.replace_emoji_shortcodes())
-            }
-        })
-}
-
-/// Return whether or not there's a breaking change
-fn get_is_breaking_change(answer: Option<&Answer>) -> Result<bool> {
-    Ok(answer
-        .unwrap_or(&Answer::Bool(false))
-        .as_bool()
-        .unwrap_or(false))
-}
-
-/// Return whether or not there's an open issue
-fn get_has_open_issue(answer: Option<&Answer>) -> Result<bool> {
-    Ok(answer
-        .unwrap_or(&Answer::Bool(false))
-        .as_bool()
-        .unwrap_or(false))
-}
-
-/// Get the issue reference, returning `None` if there isn't
-/// an open issue
-fn get_issue_reference(answer: Option<&Answer>, has_open_issue: bool) -> Result<Option<String>> {
-    if has_open_issue {
-        answer
-            .context("could not get issue reference")?
-            .as_string()
-            .context("could not convert issue reference to string")
-            .map(|i| if i.is_empty() { None } else { Some(i.into()) })
+    if use_emoji {
+        match &commit_type.emoji {
+            Some(emoji) => Ok(format!("{emoji} {summary}")),
+            _ => Ok(summary),
+        }
     } else {
-        Ok(None)
+        Ok(summary)
     }
 }
 
@@ -133,68 +50,37 @@ pub struct ExtractedAnswers {
 
 /// Extract the prompt answers into an `ExtractedAnswers`,
 /// making it usable for creating a commit
-pub fn get_extracted_answers(answers: &Answers, config: &Config) -> Result<ExtractedAnswers> {
+pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<ExtractedAnswers> {
     Ok(ExtractedAnswers {
-        commit_type: "".to_owned(),
-        scope: None,
-        summary: "".to_owned(),
-        body: None,
-        is_breaking_change: false
+        commit_type: answers.commit_type.clone(),
+        scope: answers.scope,
+        summary: get_summary(
+            answers.summary,
+            config.emoji,
+            &answers.commit_type,
+            &config.commit_types,
+        )?,
+        body: get_amended_body(&answers.body, &answers.issue_footer),
+        is_breaking_change: answers.is_breaking_change,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use cocogitto::CocoGitto;
-    use requestty::ListItem;
-
     use crate::config::Config;
+    use cocogitto::CocoGitto;
 
     use super::*;
-
-    #[test]
-    fn test_get_commit_type() {
-        let answer = Some(Answer::ListItem(ListItem {
-            index: 0,
-            text: "docs: Documentation only changes".into(),
-        }));
-
-        assert_eq!(get_commit_type(answer.as_ref()).unwrap(), "docs")
-    }
-
-    #[test]
-    fn test_get_scope() {
-        let answer = Some(Answer::String("readme".into()));
-        assert_eq!(get_scope(answer.as_ref()).unwrap(), Some("readme".into()));
-    }
-
-    #[test]
-    fn test_get_scope_with_shortcode() {
-        let answer = Some(Answer::String(":books: readme".into()));
-
-        assert_eq!(
-            get_scope(answer.as_ref()).unwrap(),
-            Some("📚 readme".into())
-        );
-    }
-
-    #[test]
-    fn test_get_scope_empty() {
-        let answer = Some(Answer::String("".into()));
-        assert_eq!(get_scope(answer.as_ref()).unwrap(), None);
-    }
 
     #[test]
     fn test_get_summary() {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = Some(Answer::String("needed more badges".into()));
+        let answer = "needed more badges".to_owned();
 
         assert_eq!(
-            get_summary(answer.as_ref(), false, "docs", &commit_types).unwrap(),
+            get_summary(answer, false, "docs", &commit_types).unwrap(),
             "needed more badges"
         );
     }
@@ -204,10 +90,10 @@ mod tests {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = Some(Answer::String("needed more badges".into()));
+        let answer = "needed more badges".to_owned();
 
         assert_eq!(
-            get_summary(answer.as_ref(), true, "docs", &commit_types).unwrap(),
+            get_summary(answer, true, "docs", &commit_types).unwrap(),
             "📚 needed more badges"
         );
     }
@@ -217,66 +103,12 @@ mod tests {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
 
-        let answer = Some(Answer::String("needed more badges :badger:".into()));
+        let answer = "needed more badges :badger:".to_owned();
 
         assert_eq!(
-            get_summary(answer.as_ref(), false, "docs", &commit_types).unwrap(),
+            get_summary(answer, false, "docs", &commit_types).unwrap(),
             "needed more badges 🦡"
         );
-    }
-
-    #[test]
-    fn test_get_body() {
-        let answer = Some(Answer::String("i _really_ like badges".into()));
-
-        assert_eq!(
-            get_body(answer.as_ref()).unwrap(),
-            Some("i _really_ like badges".into())
-        );
-    }
-
-    #[test]
-    fn test_get_body_with_shortcode() {
-        let answer = Some(Answer::String("i _really_ like badges :badger:".into()));
-
-        assert_eq!(
-            get_body(answer.as_ref()).unwrap(),
-            Some("i _really_ like badges 🦡".into())
-        );
-    }
-
-    #[test]
-    fn test_get_body_empty() {
-        let answer = Some(Answer::String("".into()));
-        assert_eq!(get_body(answer.as_ref()).unwrap(), None);
-    }
-
-    #[test]
-    fn test_get_is_breaking_change() {
-        let answer = Some(Answer::Bool(true));
-        assert!(get_is_breaking_change(answer.as_ref()).unwrap(), "{}", true);
-    }
-
-    #[test]
-    fn test_get_has_open_issue() {
-        let answer = Some(Answer::Bool(true));
-        assert!(get_has_open_issue(answer.as_ref()).unwrap(), "{}", true);
-    }
-
-    #[test]
-    fn test_get_issue_reference() {
-        let answer = Some(Answer::String("closes #1".into()));
-
-        assert_eq!(
-            get_issue_reference(answer.as_ref(), true).unwrap(),
-            Some("closes #1".into())
-        );
-    }
-
-    #[test]
-    fn test_get_issue_reference_empty() {
-        let answer = Some(Answer::String("".into()));
-        assert_eq!(get_issue_reference(answer.as_ref(), true).unwrap(), None);
     }
 
     #[test]
@@ -304,6 +136,42 @@ mod tests {
 
     #[test]
     fn test_get_extracted_answers() {
-        assert!(true);
+        let answers = Answers {
+            commit_type: "feat".into(),
+            scope: Some("space".into()),
+            summary: "add more space".into(),
+            body: Some("just never enough space!".into()),
+            is_breaking_change: false,
+            issue_footer: Some("closes #554".into()),
+        };
+
+        let config = Config::new(None).unwrap();
+        let extracted_answers = get_extracted_answers(answers, &config).unwrap();
+
+        assert_eq!(
+            extracted_answers,
+            ExtractedAnswers {
+                commit_type: "feat".into(),
+                scope: Some("space".into()),
+                summary: "add more space".into(),
+                body: Some("just never enough space!\n\ncloses #554".into()),
+                is_breaking_change: false,
+            }
+        );
+
+        let message = CocoGitto::get_conventional_message(
+            &extracted_answers.commit_type,
+            extracted_answers.scope,
+            extracted_answers.summary,
+            extracted_answers.body,
+            None,
+            extracted_answers.is_breaking_change,
+        )
+        .unwrap();
+
+        assert_eq!(
+            message,
+            "feat(space): add more space\n\njust never enough space!\n\ncloses #554"
+        );
     }
 }

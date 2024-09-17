@@ -1,17 +1,10 @@
-use std::{collections::HashSet, sync::Arc};
-
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
 use indexmap::IndexMap;
-use inquire::{
-    validator::{StringValidator, Validation},
-    Confirm, CustomUserError, Select, Text,
-};
+use inquire::{validator::Validation, Confirm, CustomUserError, Select, Text};
 
-use crate::{
-    config::{CommitType, Config},
-};
+use crate::config::{CommitType, Config};
 
 /// Get a unique list of existing scopes in the commit history
 fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
@@ -27,8 +20,7 @@ fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
             // We want to throw away any error from `parse_summary` since an
             // invalid commit message should just be ignored
             if let Ok(parsed) = parse_summary(summary) {
-                let scope = parsed.scope;
-                if let Some(scope) = scope {
+                if let Some(scope) = parsed.scope {
                     if !scopes.contains(&scope) {
                         scopes.push(scope)
                     }
@@ -97,9 +89,8 @@ pub fn prompt_type(config: &Config) -> Result<String> {
         .map(|(_, choice)| format_commit_type_choice(config.emoji, choice, &config.commit_types))
         .collect();
 
-    let selected_type =
-        Select::new("What type of change are you committing?", type_values)
-        .with_formatter(&|v| transform_commit_type_choice(&v.value))
+    let selected_type = Select::new("What type of change are you committing?", type_values)
+        .with_formatter(&|v| transform_commit_type_choice(v.value))
         .prompt()?;
 
     Ok(transform_commit_type_choice(&selected_type))
@@ -116,8 +107,8 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
 
         Ok(existing_scopes
             .iter()
-            .filter(|s| s.contains(&val))
-            .map(|s| s.clone())
+            .filter(|s| s.contains(val))
+            .cloned()
             .collect())
     }
 
@@ -132,8 +123,9 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
     Ok(selected_scope)
 }
 
-pub fn prompt_summary() -> Result<String> {
+pub fn prompt_summary(summary: String) -> Result<String> {
     let summary = Text::new("Write a short, imperative tense description of the change.")
+        .with_default(summary.as_str())
         .with_validator(validate_summary)
         .prompt()?;
 
@@ -166,7 +158,6 @@ pub fn prompt_issues() -> Result<bool> {
 }
 
 pub fn prompt_issue_text() -> Result<String> {
-
     let summary = Text::new("Add the issue reference.")
         .with_help_message("e.g. \"closes #123\"")
         .with_validator(validate_issue_reference)
@@ -186,10 +177,11 @@ pub struct Answers {
 }
 
 /// Create the interactive prompt
+// TODO use summary
 pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
     let _type = prompt_type(config)?;
     let _scope = prompt_scope(config)?;
-    let _summary = prompt_summary()?;
+    let _summary = prompt_summary(summary)?;
     let _body = prompt_body()?;
 
     let mut _breaking = false;
@@ -198,10 +190,8 @@ pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
     }
 
     let mut _issue_footer = None;
-    if config.issues {
-        if prompt_issues()? == true {
-            _issue_footer = Some(prompt_issue_text()?);
-        }
+    if config.issues && prompt_issues()? {
+        _issue_footer = Some(prompt_issue_text()?);
     }
 
     println!("{:?}", _type);
@@ -217,7 +207,7 @@ pub fn create_prompt(summary: String, config: &Config) -> Result<Answers> {
         summary: _summary,
         body: _body,
         issue_footer: _issue_footer,
-        is_breaking_change: _breaking
+        is_breaking_change: _breaking,
     })
 }
 
@@ -269,12 +259,16 @@ mod tests {
         let validated = validate_summary("needed more badges :badger:");
 
         assert!(validated.is_ok());
-        assert!(validated.expect("Summary should be OK").eq(&Validation::Valid));
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Valid));
 
         let validated = validate_summary("");
 
         assert!(validated.is_ok());
-        assert!(validated.expect("Summary should be OK").eq(&Validation::Invalid("A summary is required".into())));
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Invalid("A summary is required".into())));
     }
 
     #[test]
@@ -282,12 +276,17 @@ mod tests {
         let validated = validate_issue_reference("closes #123");
 
         assert!(validated.is_ok());
-        assert!(validated.expect("Issue reference should be OK").eq(&Validation::Valid));
+        assert!(validated
+            .expect("Issue reference should be OK")
+            .eq(&Validation::Valid));
 
         let validated = validate_issue_reference("");
 
         assert!(validated.is_ok());
-        assert!(validated.expect("Summary should be OK").eq(&Validation::Invalid("An issue reference is required".into())));
-
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Invalid(
+                "An issue reference is required".into()
+            )));
     }
 }

@@ -110,7 +110,7 @@ fn main() -> Result<()> {
         is_breaking_change,
         scope,
         summary,
-    } = get_extracted_answers(&answers, &config)?;
+    } = get_extracted_answers(answers, &config)?;
 
     // Do the thing!
     if hook {
