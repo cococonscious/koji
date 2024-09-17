@@ -126,11 +126,15 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
             .collect())
     }
 
-    let help_message = format!(
-        "{}, {}",
-        "↑↓ to move, tab to autocomplete, enter to submit",
-        get_skip_hint()
-    );
+    let help_message = if config.autocomplete && !scope_autocompleter("").unwrap().is_empty() {
+        format!(
+            "{}, {}",
+            "↑↓ to move, tab to autocomplete, enter to submit",
+            get_skip_hint()
+        )
+    } else {
+        get_skip_hint().to_string()
+    };
 
     let selected_scope = Text::new("What's the scope of this change?")
         .with_render_config(RenderConfig {
