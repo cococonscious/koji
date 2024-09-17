@@ -38,5 +38,6 @@ jobs:
       package_name: ${{ matrix.release.package_name }}
       tag_ref: refs/tags/${{ matrix.release.tag }}
     strategy:
+      fail-fast: false
       matrix:
         release: ${{ fromJson(needs.release-plz.outputs.releases) }}

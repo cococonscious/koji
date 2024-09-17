@@ -12,6 +12,16 @@ on:
       tag_ref:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      package_name:
+        description: The name of the package (e.g. 'koji')
+        required: true
+        type: string
+      tag_ref:
+        description: The tag reference (e.g. 'refs/tags/v0.1.0')
+        required: true
+        type: string
 
 env:
   CARGO_INCREMENTAL: 0
@@ -31,6 +41,7 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: aarch64-unknown-linux-gnu
@@ -64,4 +75,5 @@ jobs:
           target: ${{ matrix.target }}
           tar: all
           zip: windows
+          features: ${{ contains(matrix.target, 'windows') && 'vendored-openssl' || '' }}
           token: ${{ secrets.GITHUB_TOKEN }}
