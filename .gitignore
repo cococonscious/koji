@@ -157,3 +157,6 @@ tags
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/git,vim,rust,intellij+all,visualstudiocode
+
+# Ignore the directory used by charmbracelet/vhs to generate the gif
+work/
