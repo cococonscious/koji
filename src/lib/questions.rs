@@ -145,7 +145,14 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
         })
         .prompt_skippable()?;
 
-    Ok(selected_scope)
+    if let Some(scope) = selected_scope {
+        if scope.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(scope))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn prompt_summary(msg: String) -> Result<String> {
@@ -164,11 +171,7 @@ pub fn prompt_summary(msg: String) -> Result<String> {
 }
 
 pub fn prompt_body() -> Result<Option<String>> {
-    let help_message = format!(
-        "{}, {}",
-        "Use '\\n' for newlines, ",
-        get_skip_hint()
-    );
+    let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
 
     let summary = Text::new("Provide a longer description of the change:")
         .with_render_config(get_render_config())
