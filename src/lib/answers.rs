@@ -31,12 +31,13 @@ fn get_summary(
 /// If there is a referenced issue, we want to return a new string
 /// appending it to the body. If not, just give back the body
 fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
-    match (body, issue_reference) {
+    let body = match (body, issue_reference) {
         (Some(body), Some(issue_reference)) => Some(format!("{body}\n\n{issue_reference}")),
         (Some(body), None) => Some(body.into()),
         (None, Some(issue_reference)) => Some(issue_reference.to_owned()),
         (None, None) => None,
-    }
+    };
+    body.map(|b| b.replace_emoji_shortcodes())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -53,7 +54,7 @@ pub struct ExtractedAnswers {
 pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<ExtractedAnswers> {
     Ok(ExtractedAnswers {
         commit_type: answers.commit_type.clone(),
-        scope: answers.scope,
+        scope: answers.scope.map(|s| s.replace_emoji_shortcodes()),
         summary: get_summary(
             &answers.summary,
             config.emoji,
