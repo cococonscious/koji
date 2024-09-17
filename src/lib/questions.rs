@@ -143,9 +143,13 @@ pub fn prompt_body() -> Result<Option<String>> {
             .with_help_message("Use '\\n' for newlines")
             .prompt_skippable()?;
 
-    match summary {
-        Some(summary) => Ok(Some(summary.replace("\\n", "\n"))),
-        None => Ok(None),
+    if let Some(summary) = summary {
+        if summary.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(summary.replace("\\n", "\n")))
+    } else {
+        Ok(None)
     }
 }
 
