@@ -117,6 +117,46 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_from_path() {
+        let config = Config::new(Some(ConfigArgs {
+            path: Some("meta/config/default.toml".into()),
+            ..ConfigArgs::default()
+        }));
+
+        assert!(config.is_ok());
+    }
+
+    #[test]
+    fn test_local_config() {
+        let current_dir = current_dir().unwrap();
+        let tempdir = tempfile::tempdir().unwrap();
+        std::env::set_current_dir(&tempdir).unwrap();
+        std::fs::write(".koji.toml", "autocomplete=true").unwrap();
+
+        let config = Config::new(None);
+
+        assert!(config.is_ok());
+
+        tempdir.close().unwrap();
+        std::env::set_current_dir(&current_dir).unwrap();
+    }
+
+    #[test]
+    fn test_non_custom_use_defaults() {
+        let current_dir = current_dir().unwrap();
+        let tempdir = tempfile::tempdir().unwrap();
+        std::env::set_current_dir(&tempdir).unwrap();
+
+        let config = Config::new(None);
+
+        assert!(config.is_ok());
+        assert!(!config.unwrap().commit_types.len() > 0);
+
+        tempdir.close().unwrap();
+        std::env::set_current_dir(&current_dir).unwrap();
+    }
+
+    #[test]
     fn test_breaking_changes() {
         let config = Config::new(None).unwrap();
         assert!(config.breaking_changes);

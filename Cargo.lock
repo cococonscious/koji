@@ -786,6 +786,7 @@ dependencies = [
  "inquire",
  "rusty-hook",
  "serde",
+ "tempfile",
  "toml 0.8.19",
 ]
 

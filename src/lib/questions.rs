@@ -6,10 +6,12 @@ use indexmap::IndexMap;
 use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
 use inquire::{validator::Validation, Confirm, CustomUserError, Select, Text};
 
+#[cfg(not(tarpaulin_include))]
 fn get_skip_hint() -> &'static str {
     "<esc> or <return> to skip"
 }
 
+#[cfg(not(tarpaulin_include))]
 fn get_render_config() -> RenderConfig<'static> {
     RenderConfig {
         prompt: StyleSheet::new().with_attr(Attributes::BOLD),

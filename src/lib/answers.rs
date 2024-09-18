@@ -73,6 +73,8 @@ mod tests {
 
     use super::*;
 
+    use indexmap::indexmap;
+
     #[test]
     fn test_get_summary() {
         let config = Config::new(None).unwrap();
@@ -96,6 +98,24 @@ mod tests {
         assert_eq!(
             get_summary(answer, true, "docs", &commit_types).unwrap(),
             "📚 needed more badges"
+        );
+    }
+
+    #[test]
+    fn test_get_summary_with_non_configured_emoji() {
+        let commit_types = indexmap! {
+            "docs".into() => CommitType {
+                name: "docs".into(),
+                description: "Changes to documentation".into(),
+                emoji: None,
+            },
+        };
+
+        let answer = "needed more badges";
+
+        assert_eq!(
+            get_summary(answer, true, "docs", &commit_types).unwrap(),
+            "needed more badges"
         );
     }
 
