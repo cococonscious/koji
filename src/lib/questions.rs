@@ -19,6 +19,7 @@ fn get_render_config() -> RenderConfig<'static> {
 }
 
 /// Get a unique list of existing scopes in the commit history
+#[cfg(not(tarpaulin_include))]
 fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
     let mut walk = repo.revwalk()?;
 
@@ -95,6 +96,7 @@ fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> 
     }
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_type(config: &Config) -> Result<String> {
     let type_values = config
         .commit_types
@@ -110,6 +112,7 @@ pub fn prompt_type(config: &Config) -> Result<String> {
     Ok(transform_commit_type_choice(&selected_type))
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
     fn scope_autocompleter_empty(_: &str) -> Result<Vec<String>, CustomUserError> {
         Ok(vec![])
@@ -159,6 +162,7 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
     }
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_summary(msg: String) -> Result<String> {
     let previous_summary = match parse_summary(&msg) {
         Ok(parsed) => parsed.summary,
@@ -174,6 +178,7 @@ pub fn prompt_summary(msg: String) -> Result<String> {
     Ok(summary)
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_body() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
 
@@ -192,6 +197,7 @@ pub fn prompt_body() -> Result<Option<String>> {
     }
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
         .with_render_config(get_render_config())
@@ -201,6 +207,7 @@ pub fn prompt_breaking() -> Result<bool> {
     Ok(answer)
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_issues() -> Result<bool> {
     let answer = Confirm::new("Does this change affect any open issues?")
         .with_render_config(get_render_config())
@@ -210,6 +217,7 @@ pub fn prompt_issues() -> Result<bool> {
     Ok(answer)
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn prompt_issue_text() -> Result<String> {
     let summary = Text::new("Add the issue reference:")
         .with_render_config(get_render_config())
@@ -231,6 +239,7 @@ pub struct Answers {
 }
 
 /// Create the interactive prompt
+#[cfg(not(tarpaulin_include))]
 pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     let commit_type = prompt_type(config)?;
     let scope = prompt_scope(config)?;

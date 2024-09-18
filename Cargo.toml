@@ -38,6 +38,9 @@ vendored-openssl = ["git2/vendored-openssl"]
 [dev-dependencies]
 rusty-hook = "0.11"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+
 [profile.release]
 opt-level = "z"
 codegen-units = 1

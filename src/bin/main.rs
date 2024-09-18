@@ -61,6 +61,7 @@ struct Args {
     sign: Option<bool>,
 }
 
+#[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     // Get CLI args
     let Args {
