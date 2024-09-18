@@ -19,7 +19,7 @@ fn get_summary(
     let summary = answer.replace_emoji_shortcodes();
 
     if use_emoji {
-        Ok(format!("{} {summary}", commit_type.emoji.unwrap()))
+        Ok(format!("{} {summary}", commit_type.emoji.as_ref().unwrap()))
     } else {
         Ok(summary)
     }
