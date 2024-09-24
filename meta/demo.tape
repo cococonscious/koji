@@ -2,7 +2,7 @@
 
 Output meta/demo.gif
 
-Set TypingSpeed 75ms
+Set TypingSpeed 50ms
 Set FontSize 22
 Set Width 1300
 Set Height 800
@@ -68,7 +68,7 @@ Sleep 1s
 
 # Show last commit
 
-Type "git show --stat"
+Type "git --no-pager show --stat"
 Enter
 
 # Hold for 5s at end

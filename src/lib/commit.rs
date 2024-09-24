@@ -5,8 +5,9 @@ use cocogitto::CocoGitto;
 use git2::Repository;
 
 /// Output a commit message to `.git/COMMIT_EDITMSG`
+#[cfg(not(tarpaulin_include))]
 pub fn write_commit_msg(
-    repo: Repository,
+    repo: &Repository,
     commit_type: String,
     scope: Option<String>,
     summary: String,
@@ -31,6 +32,7 @@ pub fn write_commit_msg(
 }
 
 /// Create a commit
+#[cfg(not(tarpaulin_include))]
 pub fn commit(
     commit_type: String,
     scope: Option<String>,

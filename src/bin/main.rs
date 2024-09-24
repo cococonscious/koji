@@ -61,6 +61,7 @@ struct Args {
     sign: Option<bool>,
 }
 
+#[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     // Get CLI args
     let Args {
@@ -98,10 +99,12 @@ fn main() -> Result<()> {
         issues,
         path: config,
         sign,
+        _user_config_path: None,
+        _current_dir: None,
     }))?;
 
     // Get answers from interactive prompt
-    let answers = create_prompt(&repo, commit_message, &config)?;
+    let answers = create_prompt(commit_message, &config)?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {
@@ -110,11 +113,11 @@ fn main() -> Result<()> {
         is_breaking_change,
         scope,
         summary,
-    } = get_extracted_answers(&answers, &config)?;
+    } = get_extracted_answers(answers, &config)?;
 
     // Do the thing!
     if hook {
-        write_commit_msg(repo, commit_type, scope, summary, body, is_breaking_change)?;
+        write_commit_msg(&repo, commit_type, scope, summary, body, is_breaking_change)?;
     } else {
         commit(
             commit_type,

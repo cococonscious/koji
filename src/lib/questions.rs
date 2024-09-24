@@ -1,46 +1,43 @@
+use crate::config::{CommitType, Config};
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use git2::Repository;
 use indexmap::IndexMap;
-use requestty::{
-    prompt,
-    question::{completions, Completions},
-    Answers, Question,
-};
+use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
+use inquire::{validator::Validation, Confirm, CustomUserError, Select, Text};
 
-use crate::{
-    config::{CommitType, Config},
-    emoji::ReplaceEmoji,
-};
+#[cfg(not(tarpaulin_include))]
+fn get_skip_hint() -> &'static str {
+    "<esc> or <return> to skip"
+}
 
-/// These exist just so I don't make a typo when using them
-pub const Q_COMMIT_TYPE: &str = "commit_type";
-pub const Q_SCOPE: &str = "scope";
-pub const Q_SUMMARY: &str = "summary";
-pub const Q_BODY: &str = "body";
-pub const Q_IS_BREAKING_CHANGE: &str = "is_breaking_change";
-pub const Q_HAS_OPEN_ISSUE: &str = "has_open_issue";
-pub const Q_ISSUE_REFERENCE: &str = "issue_reference";
+#[cfg(not(tarpaulin_include))]
+fn get_render_config() -> RenderConfig<'static> {
+    RenderConfig {
+        prompt: StyleSheet::new().with_attr(Attributes::BOLD),
+        default_value: StyleSheet::new().with_fg(Color::Grey),
+        ..RenderConfig::default()
+    }
+}
 
 /// Get a unique list of existing scopes in the commit history
-fn get_existing_scopes(repo: &Repository) -> Result<Completions<String>> {
+#[cfg(not(tarpaulin_include))]
+fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
     let mut walk = repo.revwalk()?;
 
     walk.push_head()?;
     walk.set_sorting(git2::Sort::TIME)?;
 
-    let mut scopes: Completions<String> = Completions::new();
+    let mut scopes: Vec<String> = Vec::new();
 
     for id in walk {
         if let Some(summary) = repo.find_commit(id?)?.summary() {
             // We want to throw away any error from `parse_summary` since an
             // invalid commit message should just be ignored
             if let Ok(parsed) = parse_summary(summary) {
-                let scope = parsed.scope;
-
-                if let Some(scope) = scope {
+                if let Some(scope) = parsed.scope {
                     if !scopes.contains(&scope) {
-                        scopes.push(scope)
+                        scopes.push(scope);
                     }
                 }
             }
@@ -66,13 +63,9 @@ fn format_commit_type_choice(
     let use_emoji = use_emoji && commit_type.emoji.is_some();
 
     let emoji = if use_emoji {
-        if let Some(emoji) = &commit_type.emoji {
-            format!("{emoji} ")
-        } else {
-            "".into()
-        }
+        format!("{} ", commit_type.emoji.as_ref().unwrap())
     } else {
-        "".into()
+        String::new()
     };
 
     let width = commit_types
@@ -86,100 +79,189 @@ fn format_commit_type_choice(
     format!("{name}:{emoji:>width$}{description}")
 }
 
-/// Validate summary
-fn validate_summary(summary: &str) -> Result<(), String> {
-    if !summary.is_empty() {
-        Ok(())
-    } else {
-        Err("A summary is required.".into())
+fn validate_summary(input: &str) -> Result<Validation, CustomUserError> {
+    match input.trim().is_empty() {
+        false => Ok(Validation::Valid),
+        true => Ok(Validation::Invalid("A summary is required".into())),
     }
 }
 
-/// Validate issue reference
-fn validate_issue_reference(issue_reference: &str) -> Result<(), String> {
-    if !issue_reference.is_empty() {
-        Ok(())
+fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> {
+    if input.trim().is_empty() {
+        Ok(Validation::Invalid("An issue reference is required".into()))
     } else {
-        Err("An issue reference is required if this commit is related to an open issue.".into())
+        Ok(Validation::Valid)
     }
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_type(config: &Config) -> Result<String> {
+    let type_values = config
+        .commit_types
+        .iter()
+        .map(|(_, choice)| format_commit_type_choice(config.emoji, choice, &config.commit_types))
+        .collect();
+
+    let selected_type = Select::new("What type of change are you committing?", type_values)
+        .with_render_config(get_render_config())
+        .with_formatter(&|v| transform_commit_type_choice(v.value))
+        .prompt()?;
+
+    Ok(transform_commit_type_choice(&selected_type))
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    fn scope_autocompleter_empty(_: &str) -> Result<Vec<String>, CustomUserError> {
+        Ok(vec![])
+    }
+    fn scope_autocompleter(val: &str) -> Result<Vec<String>, CustomUserError> {
+        let repo = Repository::discover(std::env::current_dir()?)
+            .context("could not find git repository")?;
+        let existing_scopes = get_existing_scopes(&repo)?;
+
+        Ok(existing_scopes
+            .iter()
+            .filter(|s| s.contains(val))
+            .cloned()
+            .collect())
+    }
+
+    let help_message = if config.autocomplete && !scope_autocompleter("").unwrap().is_empty() {
+        format!(
+            "{}, {}",
+            "↑↓ to move, tab to autocomplete, enter to submit",
+            get_skip_hint()
+        )
+    } else {
+        get_skip_hint().to_string()
+    };
+
+    let selected_scope = Text::new("What's the scope of this change?")
+        .with_render_config(RenderConfig {
+            option: StyleSheet::new().with_fg(Color::Grey),
+            ..get_render_config()
+        })
+        .with_help_message(help_message.as_str())
+        .with_autocomplete(if config.autocomplete {
+            scope_autocompleter
+        } else {
+            scope_autocompleter_empty
+        })
+        .prompt_skippable()?;
+
+    if let Some(scope) = selected_scope {
+        if scope.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(scope))
+    } else {
+        Ok(None)
+    }
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_summary(msg: String) -> Result<String> {
+    let previous_summary = match parse_summary(&msg) {
+        Ok(parsed) => parsed.summary,
+        Err(_) => "".into(),
+    };
+
+    let summary = Text::new("Write a short, imperative tense description of the change:")
+        .with_render_config(get_render_config())
+        .with_placeholder(&previous_summary)
+        .with_validator(validate_summary)
+        .prompt()?;
+
+    Ok(summary)
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_body() -> Result<Option<String>> {
+    let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
+
+    let summary = Text::new("Provide a longer description of the change:")
+        .with_render_config(get_render_config())
+        .with_help_message(help_message.as_str())
+        .prompt_skippable()?;
+
+    if let Some(summary) = summary {
+        if summary.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(summary.replace("\\n", "\n")))
+    } else {
+        Ok(None)
+    }
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_breaking() -> Result<bool> {
+    let answer = Confirm::new("Are there any breaking changes?")
+        .with_render_config(get_render_config())
+        .with_default(false)
+        .prompt()?;
+
+    Ok(answer)
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_issues() -> Result<bool> {
+    let answer = Confirm::new("Does this change affect any open issues?")
+        .with_render_config(get_render_config())
+        .with_default(false)
+        .prompt()?;
+
+    Ok(answer)
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_issue_text() -> Result<String> {
+    let summary = Text::new("Add the issue reference:")
+        .with_render_config(get_render_config())
+        .with_help_message("e.g. \"closes #123\"")
+        .with_validator(validate_issue_reference)
+        .prompt()?;
+
+    Ok(summary)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Answers {
+    pub commit_type: String,
+    pub scope: Option<String>,
+    pub summary: String,
+    pub body: Option<String>,
+    pub issue_footer: Option<String>,
+    pub is_breaking_change: bool,
 }
 
 /// Create the interactive prompt
-pub fn create_prompt(repo: &Repository, summary: String, config: &Config) -> Result<Answers> {
-    // Scan history for existing scopes we can use
-    // to autocomplete the scope prompt
-    let scopes = if config.autocomplete {
-        get_existing_scopes(repo)?
-    } else {
-        completions![]
-    };
+#[cfg(not(tarpaulin_include))]
+pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
+    let commit_type = prompt_type(config)?;
+    let scope = prompt_scope(config)?;
+    let summary = prompt_summary(last_message)?;
+    let body = prompt_body()?;
 
-    let mut questions = vec![
-        Question::select(Q_COMMIT_TYPE)
-            .message("What type of change are you committing?")
-            .page_size(8)
-            .transform(|choice, _, backend| {
-                write!(backend, "{}", transform_commit_type_choice(&choice.text))
-            })
-            .choices(config.commit_types.iter().map(|(_, choice)| {
-                format_commit_type_choice(config.emoji, choice, &config.commit_types)
-            }))
-            .build(),
-        Question::input(Q_SCOPE)
-            .message("What is the scope of this change? (press enter to skip)")
-            .transform(|scope, _, backend| write!(backend, "{}", scope.replace_emoji_shortcodes()))
-            .auto_complete(|scope, _| {
-                if scopes.is_empty() {
-                    completions![scope]
-                } else {
-                    scopes.to_owned()
-                }
-            })
-            .build(),
-        Question::input(Q_SUMMARY)
-            .message("Write a short, imperative tense description of the change.")
-            .transform(|summary, _, backend| {
-                write!(backend, "{}", summary.replace_emoji_shortcodes())
-            })
-            .validate(|summary, _| validate_summary(summary))
-            .default(summary)
-            .build(),
-        Question::input(Q_BODY)
-            .message("Provide a longer description of the change. (press enter to skip)")
-            .transform(|body, _, backend| write!(backend, "{}", body.replace_emoji_shortcodes()))
-            .build(),
-    ];
-
+    let mut breaking = false;
     if config.breaking_changes {
-        questions.push(
-            Question::confirm(Q_IS_BREAKING_CHANGE)
-                .message("Are there any breaking changes?")
-                .default(false)
-                .build(),
-        );
+        breaking = prompt_breaking()?;
     }
 
-    if config.issues {
-        questions.push(
-            Question::confirm(Q_HAS_OPEN_ISSUE)
-                .message("Does this change affect any open issues?")
-                .default(false)
-                .build(),
-        );
-
-        questions.push(
-            Question::input(Q_ISSUE_REFERENCE)
-                .message("Add issue references. (e.g. \"fix #123\", \"re #123\")")
-                .when(|answers: &Answers| match answers.get(Q_HAS_OPEN_ISSUE) {
-                    Some(has_open_issue) => has_open_issue.as_bool().unwrap(),
-                    None => false,
-                })
-                .validate(|issue_reference, _| validate_issue_reference(issue_reference))
-                .build(),
-        );
+    let mut issue_footer = None;
+    if config.issues && prompt_issues()? {
+        issue_footer = Some(prompt_issue_text()?);
     }
 
-    prompt(questions).context("could not get answers from prompt")
+    Ok(Answers {
+        commit_type,
+        scope,
+        summary,
+        body,
+        issue_footer,
+        is_breaking_change: breaking,
+    })
 }
 
 #[cfg(test)]
@@ -212,6 +294,23 @@ mod tests {
     }
 
     #[test]
+    fn test_format_commit_type_choice_emoji() {
+        let commit_type = CommitType {
+            name: "123".into(),
+            emoji: None,
+            description: "Test".into(),
+        };
+
+        let commit_types = indexmap::indexmap! {
+            "123".into() => commit_type.clone(),
+        };
+
+        let choice = format_commit_type_choice(true, &commit_type, &commit_types);
+
+        assert_eq!(choice, "123:   Test");
+    }
+
+    #[test]
     fn test_render_commit_type_choice_with_emoji() {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
@@ -230,10 +329,16 @@ mod tests {
         let validated = validate_summary("needed more badges :badger:");
 
         assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Valid));
 
         let validated = validate_summary("");
 
-        assert!(validated.is_err(), "A description is required.");
+        assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Invalid("A summary is required".into())));
     }
 
     #[test]
@@ -241,12 +346,17 @@ mod tests {
         let validated = validate_issue_reference("closes #123");
 
         assert!(validated.is_ok());
+        assert!(validated
+            .expect("Issue reference should be OK")
+            .eq(&Validation::Valid));
 
         let validated = validate_issue_reference("");
 
-        assert!(
-            validated.is_err(),
-            "An issue reference is required if this commit is related to an open issue."
-        );
+        assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Invalid(
+                "An issue reference is required".into()
+            )));
     }
 }

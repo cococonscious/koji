@@ -22,21 +22,25 @@ path = "src/lib/lib.rs"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4", features = ["derive"] }
-cocogitto = { version = "< 6.1", default-features = false }
+cocogitto = { version = "~6.0", default-features = false }
 conventional_commit_parser = "0.9"
 dirs = "5.0"
 emojis = "0.6"
-git2 = { version = "0.18" }
+git2 = "0.18"
 indexmap = "2.1"
-requestty = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
+inquire = "0.7.5"
 
 [features]
 vendored-openssl = ["git2/vendored-openssl"]
 
 [dev-dependencies]
 rusty-hook = "0.11"
+tempfile = "3.12.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [profile.release]
 opt-level = "z"
