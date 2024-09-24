@@ -99,6 +99,8 @@ fn main() -> Result<()> {
         issues,
         path: config,
         sign,
+        _user_config_path: None,
+        _current_dir: None,
     }))?;
 
     // Get answers from interactive prompt
