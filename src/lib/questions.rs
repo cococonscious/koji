@@ -63,11 +63,7 @@ fn format_commit_type_choice(
     let use_emoji = use_emoji && commit_type.emoji.is_some();
 
     let emoji = if use_emoji {
-        if let Some(emoji) = &commit_type.emoji {
-            format!("{emoji} ")
-        } else {
-            String::new()
-        }
+        format!("{} ", commit_type.emoji.as_ref().unwrap())
     } else {
         String::new()
     };
