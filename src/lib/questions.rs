@@ -298,6 +298,23 @@ mod tests {
     }
 
     #[test]
+    fn test_format_commit_type_choice_emoji() {
+        let commit_type = CommitType {
+            name: "123".into(),
+            emoji: None,
+            description: "Test".into(),
+        };
+
+        let commit_types = indexmap::indexmap! {
+            "123".into() => commit_type.clone(),
+        };
+
+        let choice = format_commit_type_choice(true, &commit_type, &commit_types);
+
+        assert_eq!(choice, "123:   Test");
+    }
+
+    #[test]
     fn test_render_commit_type_choice_with_emoji() {
         let config = Config::new(None).unwrap();
         let commit_types = config.commit_types;
