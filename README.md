@@ -5,11 +5,11 @@
   built on [cocogitto](https://github.com/oknozor/cocogitto) and inspired by
   [cz-cli](https://github.com/commitizen/cz-cli).
   
-  [![Current Release](https://img.shields.io/github/v/release/cococonscious/koji)](https://github.com/cococonscious/koji/releases)
-  [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/cococonscious/koji/ci.yml?brainch=main)](https://github.com/cococonscious/koji/actions)
+  [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/cococonscious/koji/push-pr-lint-test.yml)](https://github.com/cococonscious/koji/actions/workflows/push-pr-lint-test.yml?query=branch%3Amain)
   [![Codecov](https://img.shields.io/codecov/c/gh/cococonscious/koji)](https://codecov.io/gh/cococonscious/koji)
+  [![Crate Version](https://img.shields.io/crates/v/koji)](https://crates.io/crates/koji)
+  [![Current Release](https://img.shields.io/github/v/release/cococonscious/koji)](https://github.com/cococonscious/koji/releases)
   [![Dependency Status](https://deps.rs/repo/github/cococonscious/koji/status.svg)](https://deps.rs/repo/github/cococonscious/koji)
-  [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-pink.svg)](https://conventionalcommits.org)
   [![License](https://img.shields.io/github/license/cococonscious/koji)](LICENSE)
 
   [![Commit with koji](https://github.com/cococonscious/koji/raw/main/meta/demo.gif)](https://github.com/cococonscious/koji/raw/main/meta/demo.gif)
