@@ -178,7 +178,7 @@ pub fn prompt_summary(msg: String) -> Result<String> {
 
 #[cfg(not(tarpaulin_include))]
 pub fn prompt_body() -> Result<Option<String>> {
-    let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
+    let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
     let summary = Text::new("Provide a longer description of the change:")
         .with_render_config(get_render_config())
@@ -207,7 +207,7 @@ pub fn prompt_breaking() -> Result<bool> {
 
 #[cfg(not(tarpaulin_include))]
 pub fn prompt_breaking_text() -> Result<Option<String>> {
-    let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
+    let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
     let breaking_text = Text::new("Describe the breaking changes in detail:")
         .with_render_config(get_render_config())
