@@ -25,14 +25,33 @@ fn get_summary(
     }
 }
 
-/// If there is a referenced issue, we want to return a new string
-/// appending it to the body. If not, just give back the body
-fn get_amended_body(body: &Option<String>, issue_reference: &Option<String>) -> Option<String> {
-    let body = match (body, issue_reference) {
-        (Some(body), Some(issue_reference)) => Some(format!("{body}\n\n{issue_reference}")),
-        (Some(body), None) => Some(body.into()),
-        (None, Some(issue_reference)) => Some(issue_reference.to_owned()),
-        (None, None) => None,
+/// Appends the breaking change footer key to the breaking change text if provided.
+/// Functions using this are expected to check for the text validity before calling this function.
+fn into_breaking_footer(breaking_text: &Option<String>) -> Option<String> {
+    breaking_text
+        .as_ref()
+        .map(|b| format!("BREAKING CHANGE: {b}"))
+}
+
+/// Get the body, amending it with issue references and breaking changes if provided
+fn get_amended_body(
+    body: &Option<String>,
+    issue_reference: &Option<String>,
+    breaking_text: &Option<String>,
+) -> Option<String> {
+    let body = match (body, issue_reference, breaking_text) {
+        (Some(body), Some(issue_reference), Some(breaking_text)) => {
+            Some(format!("{body}\n\n{issue_reference}\n{breaking_text}"))
+        }
+        (Some(body), Some(issue_reference), None) => Some(format!("{body}\n\n{issue_reference}")),
+        (Some(body), None, Some(breaking_text)) => Some(format!("{body}\n\n{breaking_text}")),
+        (Some(body), None, None) => Some(body.into()),
+        (None, Some(issue_reference), Some(breaking_text)) => {
+            Some(format!("{issue_reference}\n{breaking_text}"))
+        }
+        (None, Some(issue_reference), None) => Some(issue_reference.to_owned()),
+        (None, None, Some(breaking_text)) => Some(breaking_text.to_owned()),
+        (None, None, None) => None,
     };
     body.map(|b| b.replace_emoji_shortcodes())
 }
@@ -49,6 +68,14 @@ pub struct ExtractedAnswers {
 /// Extract the prompt answers into an `ExtractedAnswers`,
 /// making it usable for creating a commit
 pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<ExtractedAnswers> {
+    // The breaking change footer text should never be present if `is_breaking_change` is false, but
+    // we're checking for it anyway
+    let breaking_change_footer: Option<String> = if answers.is_breaking_change {
+        into_breaking_footer(&answers.breaking_change_footer)
+    } else {
+        None
+    };
+
     Ok(ExtractedAnswers {
         commit_type: answers.commit_type.clone(),
         scope: answers.scope.map(|s| s.replace_emoji_shortcodes()),
@@ -58,7 +85,11 @@ pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<Extrac
             &answers.commit_type,
             &config.commit_types,
         )?,
-        body: get_amended_body(&answers.body, &answers.issue_footer),
+        body: get_amended_body(
+            &answers.body,
+            &answers.issue_footer,
+            &breaking_change_footer,
+        ),
         is_breaking_change: answers.is_breaking_change,
     })
 }
@@ -130,26 +161,57 @@ mod tests {
     }
 
     #[test]
+    fn test_into_breaking_footer() {
+        let breaking_text = Some("this is a breaking change".to_string());
+        assert_eq!(
+            into_breaking_footer(&breaking_text),
+            Some("BREAKING CHANGE: this is a breaking change".into())
+        );
+
+        let breaking_text = None;
+        assert_eq!(into_breaking_footer(&breaking_text), None);
+    }
+
+    #[test]
     fn test_get_amended_body() {
         let body = Some("i _really_ like badges".to_string());
         let issue_reference = Some("closes #1".to_string());
+        let breaking_text = Some("BREAKING CHANGE: this is a breaking change".to_string());
 
         assert_eq!(
-            get_amended_body(&body, &issue_reference),
+            get_amended_body(&body, &issue_reference, &breaking_text),
+            Some(
+                "i _really_ like badges\n\ncloses #1\nBREAKING CHANGE: this is a breaking change"
+                    .into()
+            )
+        );
+
+        assert_eq!(
+            get_amended_body(&body, &issue_reference, &None),
             Some("i _really_ like badges\n\ncloses #1".into())
         );
 
         assert_eq!(
-            get_amended_body(&body, &None),
-            Some("i _really_ like badges".into())
+            get_amended_body(&body, &None, &breaking_text),
+            Some("i _really_ like badges\n\nBREAKING CHANGE: this is a breaking change".into())
         );
 
         assert_eq!(
-            get_amended_body(&None, &issue_reference),
+            get_amended_body(&None, &issue_reference, &breaking_text),
+            Some("closes #1\nBREAKING CHANGE: this is a breaking change".into())
+        );
+
+        assert_eq!(
+            get_amended_body(&None, &issue_reference, &None),
             Some("closes #1".into())
         );
 
-        assert_eq!(get_amended_body(&None, &None), None);
+        assert_eq!(
+            get_amended_body(&None, &None, &breaking_text),
+            Some("BREAKING CHANGE: this is a breaking change".into())
+        );
+
+        assert_eq!(get_amended_body(&None, &None, &None), None);
     }
 
     #[test]
@@ -159,8 +221,9 @@ mod tests {
             scope: Some("space".into()),
             summary: "add more space".into(),
             body: Some("just never enough space!".into()),
-            is_breaking_change: false,
             issue_footer: Some("closes #554".into()),
+            is_breaking_change: true,
+            breaking_change_footer: Some("this is a breaking change".into()),
         };
 
         let config = Config::new(None).unwrap();
@@ -172,8 +235,8 @@ mod tests {
                 commit_type: "feat".into(),
                 scope: Some("space".into()),
                 summary: "add more space".into(),
-                body: Some("just never enough space!\n\ncloses #554".into()),
-                is_breaking_change: false,
+                body: Some("just never enough space!\n\ncloses #554\nBREAKING CHANGE: this is a breaking change".into()),
+                is_breaking_change: true,
             }
         );
 
@@ -189,7 +252,7 @@ mod tests {
 
         assert_eq!(
             message,
-            "feat(space): add more space\n\njust never enough space!\n\ncloses #554"
+            "feat(space)!: add more space\n\njust never enough space!\n\ncloses #554\nBREAKING CHANGE: this is a breaking change"
         );
     }
 }
