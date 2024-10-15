@@ -197,6 +197,11 @@ mod tests {
         );
 
         assert_eq!(
+            get_amended_body(&body, &None, &None),
+            Some("i _really_ like badges".into())
+        );
+
+        assert_eq!(
             get_amended_body(&None, &issue_reference, &breaking_text),
             Some("closes #1\nBREAKING CHANGE: this is a breaking change".into())
         );
@@ -253,6 +258,31 @@ mod tests {
         assert_eq!(
             message,
             "feat(space)!: add more space\n\njust never enough space!\n\ncloses #554\nBREAKING CHANGE: this is a breaking change"
+        );
+
+        // Test with no breaking change
+
+        let answers = Answers {
+            commit_type: "feat".into(),
+            scope: Some("space".into()),
+            summary: "add more space".into(),
+            body: Some("just never enough space!".into()),
+            issue_footer: Some("closes #554".into()),
+            is_breaking_change: false,
+            breaking_change_footer: Some("this is a breaking change".into()),
+        };
+
+        let extracted_answers = get_extracted_answers(answers, &config).unwrap();
+
+        assert_eq!(
+            extracted_answers,
+            ExtractedAnswers {
+                commit_type: "feat".into(),
+                scope: Some("space".into()),
+                summary: "add more space".into(),
+                body: Some("just never enough space!\n\ncloses #554".into()),
+                is_breaking_change: false,
+            }
         );
     }
 }
