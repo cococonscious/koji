@@ -178,7 +178,7 @@ pub fn prompt_summary(msg: String) -> Result<String> {
 
 #[cfg(not(tarpaulin_include))]
 pub fn prompt_body() -> Result<Option<String>> {
-    let help_message = format!("{}, {}", "Use '\\n' for newlines, ", get_skip_hint());
+    let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
     let summary = Text::new("Provide a longer description of the change:")
         .with_render_config(get_render_config())
@@ -203,6 +203,25 @@ pub fn prompt_breaking() -> Result<bool> {
         .prompt()?;
 
     Ok(answer)
+}
+
+#[cfg(not(tarpaulin_include))]
+pub fn prompt_breaking_text() -> Result<Option<String>> {
+    let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
+
+    let breaking_text = Text::new("Describe the breaking changes in detail:")
+        .with_render_config(get_render_config())
+        .with_help_message(help_message.as_str())
+        .prompt_skippable()?;
+
+    if let Some(breaking_text) = breaking_text {
+        if breaking_text.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(breaking_text.replace("\\n", "\n")))
+    } else {
+        Ok(None)
+    }
 }
 
 #[cfg(not(tarpaulin_include))]
@@ -234,6 +253,7 @@ pub struct Answers {
     pub body: Option<String>,
     pub issue_footer: Option<String>,
     pub is_breaking_change: bool,
+    pub breaking_change_footer: Option<String>,
 }
 
 /// Create the interactive prompt
@@ -245,8 +265,12 @@ pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     let body = prompt_body()?;
 
     let mut breaking = false;
+    let mut breaking_footer: Option<String> = None;
     if config.breaking_changes {
         breaking = prompt_breaking()?;
+        if breaking {
+            breaking_footer = prompt_breaking_text()?;
+        }
     }
 
     let mut issue_footer = None;
@@ -261,6 +285,7 @@ pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
         body,
         issue_footer,
         is_breaking_change: breaking,
+        breaking_change_footer: breaking_footer,
     })
 }
 
