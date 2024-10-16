@@ -2,6 +2,7 @@ use std::{fs::File, io::Write};
 
 use anyhow::Result;
 use cocogitto::CocoGitto;
+use conventional_commit_parser::commit::{CommitType::Custom, ConventionalCommit};
 use git2::Repository;
 
 /// Output a commit message to `.git/COMMIT_EDITMSG`
@@ -14,14 +15,15 @@ pub fn write_commit_msg(
     body: Option<String>,
     is_breaking_change: bool,
 ) -> Result<()> {
-    let message = CocoGitto::get_conventional_message(
-        &commit_type,
+    let message = ConventionalCommit {
+        commit_type: Custom(commit_type),
         scope,
         summary,
         body,
-        None,
         is_breaking_change,
-    )?;
+        footers: vec![],
+    }
+    .to_string();
 
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
     let mut file = File::create(commit_editmsg)?;
