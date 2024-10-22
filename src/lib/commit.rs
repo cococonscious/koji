@@ -1,6 +1,7 @@
 use std::{fs::File, io::Write};
 
 use anyhow::Result;
+use cocogitto::command::commit::CommitOptions;
 use cocogitto::CocoGitto;
 use git2::Repository;
 
@@ -33,25 +34,10 @@ pub fn write_commit_msg(
 
 /// Create a commit
 #[cfg(not(tarpaulin_include))]
-pub fn commit(
-    commit_type: String,
-    scope: Option<String>,
-    summary: String,
-    body: Option<String>,
-    is_breaking_change: bool,
-    sign: bool,
-) -> Result<()> {
+pub fn commit(options: CommitOptions) -> Result<()> {
     let cocogitto = CocoGitto::get()?;
 
-    cocogitto.conventional_commit(
-        &commit_type,
-        scope,
-        summary,
-        body,
-        None,
-        is_breaking_change,
-        sign,
-    )?;
+    cocogitto.conventional_commit(options)?;
 
     Ok(())
 }

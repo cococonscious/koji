@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-
+use cocogitto::command::commit::CommitOptions;
 use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
@@ -13,30 +13,44 @@ use koji::questions::create_prompt;
 #[derive(Parser, Debug)]
 #[command(
     about = "🦊 An interactive CLI for creating conventional commits.",
-    version,
-    author
+    version
 )]
 struct Args {
     #[arg(
-        short,
         long,
+        default_missing_value = "true",
+        num_args = 0..=1,
+        value_name = "ENABLE",
+        help_heading = Some("Configuration"),
         help = "Enables autocomplete for scope prompt via scanning commit history"
     )]
     autocomplete: Option<bool>,
 
-    #[arg(short, long, help = "Enables breaking change prompt")]
+    #[arg(
+        long,
+        default_missing_value = "true",
+        num_args = 0..=1,
+        value_name = "ENABLE",
+        help_heading = Some("Configuration"),
+        help = "Enables breaking change prompts, one of them for appending the BREAKING CHANGE footer"
+    )]
     breaking_changes: Option<bool>,
 
     #[arg(
         short,
         long,
-        help = "Path to a config file containing custom commit types"
+        value_name = "FILE",
+        help_heading = Some("Configuration"),
+        help = "Path to a custom config file"
     )]
     config: Option<String>,
 
     #[arg(
-        short,
         long,
+        default_missing_value = "true",
+        num_args = 0..=1,
+        value_name = "ENABLE",
+        help_heading = Some("Configuration"),
         help = "Prepend the commit summary with relevant emoji based on commit type"
     )]
     emoji: Option<bool>,
@@ -48,17 +62,28 @@ struct Args {
     hook: bool,
 
     #[arg(
-        short,
         long,
-        help = "Enables issue prompt, which will append a reference to an issue in the commit body"
+        default_missing_value = "true",
+        num_args = 0..=1,
+        value_name = "ENABLE",
+        help_heading = Some("Configuration"),
+        help = "Enables issue prompts, to append issue references to the commit"
     )]
     issues: Option<bool>,
 
     #[arg(
+        short = 'S',
         long,
+        default_missing_value = "true",
+        num_args = 0..=1,
+        value_name = "ENABLE",
+        help_heading = Some("Configuration"),
         help = "Sign the commit using the user's GPG key, if one is configured"
     )]
     sign: Option<bool>,
+
+    #[arg(short, long, help = "Stage all tracked modified or deleted files")]
+    all: bool,
 }
 
 #[cfg(not(tarpaulin_include))]
@@ -72,6 +97,7 @@ fn main() -> Result<()> {
         hook,
         issues,
         sign,
+        all,
     } = Args::parse();
 
     // Find repo
@@ -119,14 +145,19 @@ fn main() -> Result<()> {
     if hook {
         write_commit_msg(&repo, commit_type, scope, summary, body, is_breaking_change)?;
     } else {
-        commit(
-            commit_type,
+        let options = CommitOptions {
+            commit_type: commit_type.as_str(),
             scope,
             summary,
             body,
-            is_breaking_change,
-            config.sign,
-        )?;
+            footer: None,
+            breaking: is_breaking_change,
+            sign: config.sign,
+            add_files: all,
+            update_files: false,
+        };
+
+        commit(options)?;
     }
 
     Ok(())

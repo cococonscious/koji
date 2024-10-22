@@ -1,9 +1,0 @@
-pre_bump_hooks = ["cargo bump {{version}}", "cargo build --release"]
-post_bump_hooks = ["git push", "git push origin {{version}}"]
-
-[changelog]
-path = "CHANGELOG.md"
-template = "remote"
-remote = "github.com"
-repository = "koji"
-owner = "cococonscious"
