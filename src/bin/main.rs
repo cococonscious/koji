@@ -32,7 +32,7 @@ struct Args {
         num_args = 0..=1,
         value_name = "ENABLE",
         help_heading = Some("Configuration"),
-        help = "Enables breaking change prompts, one of them for appending the BREAKING CHANGE footer"
+        help = "Enables breaking change prompts, one of them for adding the BREAKING CHANGE footer"
     )]
     breaking_changes: Option<bool>,
 
@@ -67,7 +67,7 @@ struct Args {
         num_args = 0..=1,
         value_name = "ENABLE",
         help_heading = Some("Configuration"),
-        help = "Enables issue prompts, to append issue references to the commit"
+        help = "Enables issue prompts, to add a footer for issue references"
     )]
     issues: Option<bool>,
 
