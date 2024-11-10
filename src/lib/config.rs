@@ -12,6 +12,7 @@ pub struct Config {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub workdir: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -58,6 +59,8 @@ impl Config {
             _current_dir,
         } = args.unwrap_or_default();
 
+        let workdir = _current_dir.unwrap_or(current_dir()?);
+
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
         let default_config: ConfigTOML =
@@ -75,7 +78,7 @@ impl Config {
         };
 
         // Try to get config from working directory
-        let working_dir_path = _current_dir.unwrap_or(current_dir()?).join(".koji.toml");
+        let working_dir_path = workdir.join(".koji.toml");
         if Path::new(&working_dir_path).exists() {
             let contents = read_to_string(working_dir_path).context("could not read config")?;
             parsed = Some(toml::from_str(&contents).context("could not parse config")?);
@@ -115,6 +118,7 @@ impl Config {
             emoji: emoji.unwrap_or(config.emoji.unwrap_or(false)),
             issues: issues.unwrap_or(config.issues.unwrap_or(true)),
             sign: sign.unwrap_or(config.sign.unwrap_or(false)),
+            workdir,
         })
     }
 }
