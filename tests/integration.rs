@@ -1,4 +1,5 @@
 use git2::Repository;
+#[cfg(not(target_os = "windows"))]
 use rexpect::session::spawn_command;
 use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
@@ -13,6 +14,7 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
 
 #[ignore]
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
