@@ -4,7 +4,11 @@ use conventional_commit_parser::parse_summary;
 use git2::Repository;
 use indexmap::IndexMap;
 use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
-use inquire::{validator::Validation, Confirm, CustomUserError, Select, Text};
+use inquire::{
+    autocompletion::{Autocomplete, Replacement},
+    validator::Validation,
+    Confirm, CustomUserError, Select, Text,
+};
 
 #[cfg(not(tarpaulin_include))]
 fn get_skip_hint() -> &'static str {
@@ -18,33 +22,6 @@ fn get_render_config() -> RenderConfig<'static> {
         default_value: StyleSheet::new().with_fg(Color::Grey),
         ..RenderConfig::default()
     }
-}
-
-/// Get a unique list of existing scopes in the commit history
-#[cfg(not(tarpaulin_include))]
-fn get_existing_scopes(repo: &Repository) -> Result<Vec<String>> {
-    let mut walk = repo.revwalk()?;
-
-    walk.push_head()?;
-    walk.set_sorting(git2::Sort::TIME)?;
-
-    let mut scopes: Vec<String> = Vec::new();
-
-    for id in walk {
-        if let Some(summary) = repo.find_commit(id?)?.summary() {
-            // We want to throw away any error from `parse_summary` since an
-            // invalid commit message should just be ignored
-            if let Ok(parsed) = parse_summary(summary) {
-                if let Some(scope) = parsed.scope {
-                    if !scopes.contains(&scope) {
-                        scopes.push(scope);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(scopes)
 }
 
 /// Transform commit type choice
@@ -95,7 +72,7 @@ fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> 
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_type(config: &Config) -> Result<String> {
+fn prompt_type(config: &Config) -> Result<String> {
     let type_values = config
         .commit_types
         .iter()
@@ -110,52 +87,95 @@ pub fn prompt_type(config: &Config) -> Result<String> {
     Ok(transform_commit_type_choice(&selected_type))
 }
 
+#[derive(Debug, Clone)]
+struct ScopeAutocompleter {
+    config: Config,
+}
+
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
-    fn scope_autocompleter_empty(_: &str) -> Result<Vec<String>, CustomUserError> {
-        Ok(vec![])
-    }
-    fn scope_autocompleter(val: &str) -> Result<Vec<String>, CustomUserError> {
-        let repo = Repository::discover(std::env::current_dir()?)
-            .context("could not find git repository")?;
+impl ScopeAutocompleter {
+    fn get_existing_scopes(&self) -> Result<Vec<String>> {
+        let repo =
+            Repository::discover(&self.config.workdir).context("could not find git repository")?;
 
         if repo.is_empty()? {
-            return Ok(vec![]);
+            return Ok(Vec::new());
         }
 
-        let existing_scopes = get_existing_scopes(&repo)?;
+        let mut walk = repo.revwalk()?;
+
+        walk.push_head()?;
+        walk.set_sorting(git2::Sort::TIME)?;
+
+        let mut scopes: Vec<String> = Vec::new();
+
+        for id in walk {
+            if let Some(summary) = repo.find_commit(id?)?.summary() {
+                // We want to throw away any error from `parse_summary` since an
+                // invalid commit message should just be ignored
+                if let Ok(parsed) = parse_summary(summary) {
+                    if let Some(scope) = parsed.scope {
+                        if !scopes.contains(&scope) {
+                            scopes.push(scope);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(scopes)
+    }
+}
+
+#[cfg(not(tarpaulin_include))]
+impl Autocomplete for ScopeAutocompleter {
+    fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
+        let existing_scopes = self.get_existing_scopes()?;
 
         Ok(existing_scopes
             .iter()
-            .filter(|s| s.contains(val))
+            .filter(|s| s.contains(input))
             .cloned()
             .collect())
     }
 
-    let help_message = if config.autocomplete && !scope_autocompleter("").unwrap().is_empty() {
-        format!(
-            "{}, {}",
-            "↑↓ to move, tab to autocomplete, enter to submit",
-            get_skip_hint()
-        )
-    } else {
-        get_skip_hint().to_string()
-    };
+    fn get_completion(
+        &mut self,
+        _input: &str,
+        highlighted_suggestion: Option<String>,
+    ) -> Result<Replacement, CustomUserError> {
+        Ok(highlighted_suggestion)
+    }
+}
 
-    let selected_scope = Text::new("What's the scope of this change?")
+#[cfg(not(tarpaulin_include))]
+fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    let mut scope_autocompleter = ScopeAutocompleter {
+        config: config.clone(),
+    };
+    let help_message =
+        if config.autocomplete && !scope_autocompleter.get_suggestions("").unwrap().is_empty() {
+            format!(
+                "{}, {}",
+                "↑↓ to move, tab to autocomplete, enter to submit",
+                get_skip_hint()
+            )
+        } else {
+            get_skip_hint().to_string()
+        };
+
+    let mut selected_scope = Text::new("What's the scope of this change?")
         .with_render_config(RenderConfig {
             option: StyleSheet::new().with_fg(Color::Grey),
             ..get_render_config()
         })
-        .with_help_message(help_message.as_str())
-        .with_autocomplete(if config.autocomplete {
-            scope_autocompleter
-        } else {
-            scope_autocompleter_empty
-        })
-        .prompt_skippable()?;
+        .with_help_message(help_message.as_str());
 
-    if let Some(scope) = selected_scope {
+    if config.autocomplete {
+        selected_scope = selected_scope.with_autocomplete(scope_autocompleter);
+    }
+
+    if let Some(scope) = selected_scope.prompt_skippable()? {
         if scope.is_empty() {
             return Ok(None);
         }
@@ -166,7 +186,7 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_summary(msg: String) -> Result<String> {
+fn prompt_summary(msg: String) -> Result<String> {
     let previous_summary = match parse_summary(&msg) {
         Ok(parsed) => parsed.summary,
         Err(_) => "".into(),
@@ -182,7 +202,7 @@ pub fn prompt_summary(msg: String) -> Result<String> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_body() -> Result<Option<String>> {
+fn prompt_body() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
     let summary = Text::new("Provide a longer description of the change:")
@@ -201,7 +221,7 @@ pub fn prompt_body() -> Result<Option<String>> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_breaking() -> Result<bool> {
+fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
         .with_render_config(get_render_config())
         .with_default(false)
@@ -211,7 +231,7 @@ pub fn prompt_breaking() -> Result<bool> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_breaking_text() -> Result<Option<String>> {
+fn prompt_breaking_text() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
     let breaking_text = Text::new("Describe the breaking changes in detail:")
@@ -230,7 +250,7 @@ pub fn prompt_breaking_text() -> Result<Option<String>> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_issues() -> Result<bool> {
+fn prompt_issues() -> Result<bool> {
     let answer = Confirm::new("Does this change affect any open issues?")
         .with_render_config(get_render_config())
         .with_default(false)
@@ -240,7 +260,7 @@ pub fn prompt_issues() -> Result<bool> {
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn prompt_issue_text() -> Result<String> {
+fn prompt_issue_text() -> Result<String> {
     let summary = Text::new("Add the issue reference:")
         .with_render_config(get_render_config())
         .with_help_message("e.g. \"closes #123\"")

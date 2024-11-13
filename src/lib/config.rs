@@ -5,6 +5,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use std::{env::current_dir, fs::read_to_string, path::Path};
 
+#[derive(Debug, Clone)]
 pub struct Config {
     pub autocomplete: bool,
     pub breaking_changes: bool,
