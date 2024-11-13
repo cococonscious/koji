@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, Parser, Subcommand};
 use cocogitto::command::commit::CommitOptions;
 use conventional_commit_parser::parse;
 use git2::Repository;
@@ -16,6 +16,9 @@ use koji::questions::create_prompt;
     version
 )]
 struct Args {
+    #[command(subcommand)]
+    command: Option<SubCmds>,
+
     #[arg(
         long,
         default_missing_value = "true",
@@ -86,10 +89,17 @@ struct Args {
     all: bool,
 }
 
+#[derive(Debug, Subcommand)]
+enum SubCmds {
+    #[command(about = "Generate shell completions")]
+    Completions { shell: clap_complete_command::Shell },
+}
+
 #[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     // Get CLI args
     let Args {
+        command,
         autocomplete,
         breaking_changes,
         config,
@@ -99,6 +109,15 @@ fn main() -> Result<()> {
         sign,
         all,
     } = Args::parse();
+
+    if command.is_some() {
+        match command.unwrap() {
+            SubCmds::Completions { shell } => {
+                shell.generate(&mut Args::command(), &mut std::io::stdout());
+            }
+        }
+        return Ok(());
+    }
 
     // Find repo
     let repo =
