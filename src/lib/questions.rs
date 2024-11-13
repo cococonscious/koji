@@ -118,6 +118,11 @@ pub fn prompt_scope(config: &Config) -> Result<Option<String>> {
     fn scope_autocompleter(val: &str) -> Result<Vec<String>, CustomUserError> {
         let repo = Repository::discover(std::env::current_dir()?)
             .context("could not find git repository")?;
+
+        if repo.is_empty()? {
+            return Ok(vec![]);
+        }
+
         let existing_scopes = get_existing_scopes(&repo)?;
 
         Ok(existing_scopes
