@@ -12,11 +12,11 @@ on:
 
 jobs:
   test:
-    name: cargo test, tarpaulin & codecov
+    name: cargo test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.7
-      - uses: actions/cache@v4.0.2
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/cache@v4.1.2
         with:
           path: |
             ~/.cargo/bin/
@@ -26,9 +26,23 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --all-features
+
+  coverage:
+    name: cargo tarpaulin & codecov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/cache@v4.1.2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo install cargo-tarpaulin
       - run: cargo tarpaulin --out Xml
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -36,8 +50,8 @@ jobs:
     name: cargo clippy & fmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.1.7
-      - uses: actions/cache@v4.0.2
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/cache@v4.1.2
         with:
           path: |
             ~/.cargo/bin/
