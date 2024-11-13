@@ -58,6 +58,8 @@ koji
 
 See `koji --help` for more options.
 
+Use `koji completions <SHELL>` to generate completion scripts for your shell.
+
 ## Using as a git hook
 
 An alternative way to use koji is as a [git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks),
