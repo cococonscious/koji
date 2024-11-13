@@ -42,7 +42,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo install cargo-tarpaulin
       - run: cargo tarpaulin --out Xml
-      - uses: codecov/codecov-action@v4.6
+      - uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
