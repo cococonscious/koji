@@ -3,31 +3,28 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
-## [3.0.0](https://github.com/cococonscious/koji/compare/v2.2.0...v3.0.0) - 2024-11-13
+## [3.0.0](https://github.com/cococonscious/koji/compare/v2.2.0...v3.0.0) - 2024-11-26
 
 ### Added
 
+- type filtering, multi-line body support ([#99](https://github.com/cococonscious/koji/pull/99))
+- breaking change footers ([#101](https://github.com/cococonscious/koji/pull/101))
+- [**breaking**] stage files, better args, deps ([#102](https://github.com/cococonscious/koji/pull/102))
 - add shell completions subcommand ([#106](https://github.com/cococonscious/koji/pull/106))
-- *(gitignore)* add intellij, vim, vscode and git ([#96](https://github.com/cococonscious/koji/pull/96))
+- non-default vendored-openssl feature ([#98](https://github.com/cococonscious/koji/pull/98))
 - *(cargo)* add documentation and repository links ([#88](https://github.com/cococonscious/koji/pull/88))
 
 ### Changed
 
 - split test and coverage, deps ([#107](https://github.com/cococonscious/koji/pull/107))
-- [**breaking**] stage files, better args, deps ([#102](https://github.com/cococonscious/koji/pull/102))
-- breaking change footers ([#101](https://github.com/cococonscious/koji/pull/101))
-- *(readme)* better badges ([#100](https://github.com/cococonscious/koji/pull/100))
-- type filtering, multi-line body support ([#99](https://github.com/cococonscious/koji/pull/99))
-- non-default vendored-openssl feature, pin cocogitto ([#98](https://github.com/cococonscious/koji/pull/98))
 - shorter test asserts, vendored openssl, complete workflow overhaul ([#94](https://github.com/cococonscious/koji/pull/94))
+- *(readme)* better badges ([#100](https://github.com/cococonscious/koji/pull/100))
+- *(gitignore)* add intellij, vim, vscode and git ([#96](https://github.com/cococonscious/koji/pull/96))
 - update repository url, badges and license ([#93](https://github.com/cococonscious/koji/pull/93))
-- *(readme)* looking for maintainer
 - use asdf
-- use devenv
 
 ### Fixed
 
-- fix wrong actions/cache version ([#108](https://github.com/cococonscious/koji/pull/108))
 - *(autocomplete)* check for empty repo before revwalk ([#105](https://github.com/cococonscious/koji/pull/105))
 
 ## [2.2.0](https://github.com/cococonscious/koji/compare/2.1.0..2.2.0) - 2024-01-06
