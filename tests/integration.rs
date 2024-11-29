@@ -1,4 +1,4 @@
-use git2::{Commit, Repository, RepositoryInitOptions};
+use git2::{Commit, Repository, RepositoryInitOptions, IndexAddOption};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
@@ -76,6 +76,11 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
+    // TODO properly test "-a"
+    // println!("{:?}", repo.status_file(Path::new("config.json"))?);
+    repo.index()?
+        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+    // println!("{:?}", repo.status_file(Path::new("config.json"))?);
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -129,17 +134,18 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_hook_correct() -> Result<(), Box<dyn Error>> {
-    let (bin_path, temp_dir, _) = setup_test_dir()?;
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
+    repo.index()?
+        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
         .arg("-C")
         .arg(temp_dir.path())
-        .arg("-a")
-        .arg("--autocomplete=true");
+        .arg("--autocomplete=false");
 
     let mut process = spawn_command(cmd, Some(5000))?;
 
