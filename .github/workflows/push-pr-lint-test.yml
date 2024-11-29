@@ -10,6 +10,9 @@ on:
       - main
   pull_request:
 
+env:
+  ACT: false
+
 jobs:
   test:
     name: cargo test
@@ -29,7 +32,7 @@ jobs:
       - run: cargo test --all-features
 
   coverage:
-    name: cargo tarpaulin & codecov
+    name: cargo llvm-cov & codecov
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
@@ -41,12 +44,16 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo install cargo-tarpaulin
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-llvm-cov
       - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
-      - run: cargo tarpaulin --out Xml
+      - run: cargo llvm-cov --codecov --output-path codecov.json
       - uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: codecov.json
+          fail_ci_if_error: true
+          dry_run: ${{ env.ACT }}
 
   lints:
     name: cargo clippy & fmt
@@ -62,7 +69,6 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      - run: rustup component add rustfmt clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo fmt --all -- --check

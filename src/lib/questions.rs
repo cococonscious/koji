@@ -10,12 +10,10 @@ use inquire::{
     Confirm, CustomUserError, Select, Text,
 };
 
-#[cfg(not(tarpaulin_include))]
 fn get_skip_hint() -> &'static str {
     "<esc> or <return> to skip"
 }
 
-#[cfg(not(tarpaulin_include))]
 fn get_render_config() -> RenderConfig<'static> {
     RenderConfig {
         prompt: StyleSheet::new().with_attr(Attributes::BOLD),
@@ -71,7 +69,6 @@ fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> 
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_type(config: &Config) -> Result<String> {
     let type_values = config
         .commit_types
@@ -92,7 +89,6 @@ struct ScopeAutocompleter {
     config: Config,
 }
 
-#[cfg(not(tarpaulin_include))]
 impl ScopeAutocompleter {
     fn get_existing_scopes(&self) -> Result<Vec<String>> {
         let repo =
@@ -127,7 +123,6 @@ impl ScopeAutocompleter {
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
         let existing_scopes = self.get_existing_scopes()?;
@@ -148,7 +143,6 @@ impl Autocomplete for ScopeAutocompleter {
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_scope(config: &Config) -> Result<Option<String>> {
     let mut scope_autocompleter = ScopeAutocompleter {
         config: config.clone(),
@@ -185,7 +179,6 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_summary(msg: String) -> Result<String> {
     let previous_summary = match parse_summary(&msg) {
         Ok(parsed) => parsed.summary,
@@ -201,7 +194,6 @@ fn prompt_summary(msg: String) -> Result<String> {
     Ok(summary)
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_body() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
@@ -220,7 +212,6 @@ fn prompt_body() -> Result<Option<String>> {
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
         .with_render_config(get_render_config())
@@ -230,7 +221,6 @@ fn prompt_breaking() -> Result<bool> {
     Ok(answer)
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_breaking_text() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
@@ -249,7 +239,6 @@ fn prompt_breaking_text() -> Result<Option<String>> {
     }
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_issues() -> Result<bool> {
     let answer = Confirm::new("Does this change affect any open issues?")
         .with_render_config(get_render_config())
@@ -259,7 +248,6 @@ fn prompt_issues() -> Result<bool> {
     Ok(answer)
 }
 
-#[cfg(not(tarpaulin_include))]
 fn prompt_issue_text() -> Result<String> {
     let summary = Text::new("Add the issue reference:")
         .with_render_config(get_render_config())
@@ -282,7 +270,6 @@ pub struct Answers {
 }
 
 /// Create the interactive prompt
-#[cfg(not(tarpaulin_include))]
 pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     let commit_type = prompt_type(config)?;
     let scope = prompt_scope(config)?;

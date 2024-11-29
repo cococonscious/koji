@@ -103,7 +103,6 @@ enum SubCmds {
     Completions { shell: clap_complete_command::Shell },
 }
 
-#[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     // Get CLI args
     let Args {

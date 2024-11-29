@@ -46,7 +46,7 @@ tempfile = "3.12.0"
 rexpect = "0.6.0"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage,coverage_nightly)'] }
 
 [profile.release]
 opt-level = "z"
