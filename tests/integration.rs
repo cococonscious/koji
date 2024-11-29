@@ -1,7 +1,9 @@
 use git2::{Commit, Repository, RepositoryInitOptions};
-use rexpect::session::PtySession;
 #[cfg(not(target_os = "windows"))]
-use rexpect::{process::wait, session::spawn_command};
+use rexpect::{
+    process::wait,
+    session::{spawn_command, PtySession},
+};
 use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
@@ -88,7 +90,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     process.send_line("feat")?;
     process.expect_scope()?;
     process.send_line("config")?;
-    process.exp_string("description of the change")?;
+    process.expect_summary()?;
     process.send_line("refactor config pairs")?;
     process.expect_body()?;
     process
