@@ -1,4 +1,4 @@
-use git2::{Commit, Repository};
+use git2::{Commit, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
 use rexpect::session::spawn_command;
 use std::{error::Error, fs, path::PathBuf, process::Command};
@@ -7,7 +7,9 @@ use tempfile::TempDir;
 fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     let bin_path = assert_cmd::cargo::cargo_bin("koji");
     let temp_dir = tempfile::tempdir()?;
-    let repo = Repository::init(&temp_dir)?;
+    let mut init_options = RepositoryInitOptions::new();
+    init_options.initial_head("main");
+    let repo = Repository::init_opts(&temp_dir, &init_options)?;
 
     Ok((bin_path, temp_dir, repo))
 }
@@ -28,9 +30,10 @@ fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(),
     fs::write(temp_dir.path().join("config.json"), "abc")?;
 
     let mut cmd = Command::new(bin_path);
-    cmd.env("NO_COLOR", "1").arg("-C").arg(temp_dir.path());
-
-    cmd.arg("-a");
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("-a");
 
     let mut process = spawn_command(cmd, Some(10000))?;
 
