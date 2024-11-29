@@ -1,6 +1,6 @@
 use git2::{Commit, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
-use rexpect::session::spawn_command;
+use rexpect::{process::wait, session::spawn_command};
 use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
@@ -35,7 +35,7 @@ fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(),
         .arg(temp_dir.path())
         .arg("-a");
 
-    let mut process = spawn_command(cmd, Some(10000))?;
+    let mut process = spawn_command(cmd, Some(5000))?;
 
     process.exp_string("are you committing?")?;
     process.send_line("feat")?;
@@ -54,7 +54,14 @@ fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(),
     process.send_line("Y")?;
     process.exp_string("issue reference:")?;
     process.send_line("closes #1")?;
-    let _ = process.exp_eof();
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+    }
 
     let commit = get_first_commit(&repo)?;
     assert_eq!(

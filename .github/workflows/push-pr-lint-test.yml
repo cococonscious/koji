@@ -25,6 +25,7 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
+      - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
       - run: cargo test --all-features
 
   coverage:
@@ -41,6 +42,7 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo install cargo-tarpaulin
+      - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
       - run: cargo tarpaulin --out Xml
       - uses: codecov/codecov-action@v4.6.0
         with:
