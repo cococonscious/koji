@@ -158,7 +158,7 @@ fn main() -> Result<()> {
         path: config,
         sign,
         _user_config_path: None,
-        _current_dir: Some(current_dir),
+        _current_dir: Some(current_dir.clone()),
     }))?;
 
     // Get answers from interactive prompt
@@ -189,7 +189,7 @@ fn main() -> Result<()> {
             update_files: false,
         };
 
-        commit(options)?;
+        commit(current_dir, options)?;
     }
 
     Ok(())

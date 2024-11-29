@@ -1,4 +1,4 @@
-use git2::Repository;
+use git2::{Commit, Repository};
 #[cfg(not(target_os = "windows"))]
 use rexpect::session::spawn_command;
 use std::{error::Error, fs, path::PathBuf, process::Command};
@@ -12,11 +12,18 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     Ok((bin_path, temp_dir, repo))
 }
 
-#[ignore]
+fn get_first_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+    let mut walk = repo.revwalk()?;
+    walk.push_head()?;
+    let oid = walk.next().expect("cannot get commit in revwalk")?;
+
+    repo.find_commit(oid)
+}
+
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(), Box<dyn Error>> {
-    let (bin_path, temp_dir, _) = setup_test_dir()?;
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
 
@@ -44,9 +51,17 @@ fn test_type_scope_summary_body_breaking_issue_add_files_correct() -> Result<(),
     process.send_line("Y")?;
     process.exp_string("issue reference:")?;
     process.send_line("closes #1")?;
-    println!("{:?}", process.exp_eof());
+    let _ = process.exp_eof();
 
-    // TODO check if commit was created
+    let commit = get_first_commit(&repo)?;
+    assert_eq!(
+        commit.summary(),
+        Some("feat(config)!: refactor config pairs")
+    );
+    assert_eq!(
+        commit.body(),
+        Some("Removed and added a config pair each\nNecessary for future compatibility.\n\ncloses #1\nBREAKING CHANGE: Something can't be configured anymore")
+    );
 
     temp_dir.close()?;
     Ok(())

@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, path::PathBuf};
 
 use anyhow::Result;
 use cocogitto::command::commit::CommitOptions;
@@ -34,8 +34,8 @@ pub fn write_commit_msg(
 
 /// Create a commit
 #[cfg(not(tarpaulin_include))]
-pub fn commit(options: CommitOptions) -> Result<()> {
-    let cocogitto = CocoGitto::get()?;
+pub fn commit(current_dir: PathBuf, options: CommitOptions) -> Result<()> {
+    let cocogitto = CocoGitto::get_at(current_dir)?;
 
     cocogitto.conventional_commit(options)?;
 
