@@ -45,9 +45,9 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@cargo-tarpaulin
       - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
-      - run: cargo llvm-cov --codecov --output-path codecov.json
+      - run: cargo tarpaulin --out Xml --engine llvm
       - uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

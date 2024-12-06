@@ -199,3 +199,30 @@ fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
     temp_dir.close()?;
     Ok(())
 }
+
+#[test]
+fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
+    fn run_for(shell: &'static str, containing: &'static str) -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin("koji");
+
+        let mut cmd = Command::new(bin_path);
+        cmd.arg("completions").arg(shell);
+
+        let cmd_out = cmd.output()?;
+        let stdout = String::from_utf8(cmd_out.stdout)?;
+
+        assert!(cmd_out.status.success());
+        assert!(stdout.contains(containing));
+
+        Ok(())
+    }
+
+    run_for("nushell", "def \"nu-complete koji")?;
+    run_for("fish", "complete -c koji -n \"__fish_koji_needs_command")?;
+    run_for("bash", "complete -F _koji -o bashdefault -o default koji")?;
+    run_for(
+        "powershell",
+        "Register-ArgumentCompleter -Native -CommandName 'koji'",
+    )?;
+    run_for("zsh", "#compdef koji")
+}
