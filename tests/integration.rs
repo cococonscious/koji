@@ -145,6 +145,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     cmd.env("NO_COLOR", "1")
         .arg("-C")
         .arg(temp_dir.path())
+        .arg("--hook")
         .arg("--autocomplete=false");
 
     let mut process = spawn_command(cmd, Some(5000))?;
@@ -176,6 +177,24 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
         fs::read(editmsg)?,
         "fix: some weird error".as_bytes().to_vec()
     );
+
+    temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
+    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let temp_dir = tempfile::tempdir()?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("-C").arg(temp_dir.path());
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!cmd_out.status.success());
+    assert!(stderr_out.contains("could not find git repository"));
 
     temp_dir.close()?;
     Ok(())
