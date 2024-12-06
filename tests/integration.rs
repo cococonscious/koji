@@ -1,4 +1,4 @@
-use git2::{Commit, IndexAddOption, Repository, RepositoryInitOptions};
+use git2::{Commit, IndexAddOption, Oid, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
@@ -17,12 +17,20 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     Ok((bin_path, temp_dir, repo))
 }
 
-fn get_first_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+fn get_last_commit(repo: &Repository) -> Result<Commit, git2::Error> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
     let oid = walk.next().expect("cannot get commit in revwalk")?;
 
     repo.find_commit(oid)
+}
+
+fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<Oid, git2::Error> {
+    let signature = repo.signature()?;
+    let oid = repo.index()?.write_tree()?;
+    let tree = repo.find_tree(oid)?;
+
+    repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
 }
 
 trait ExpectPromps {
@@ -75,10 +83,15 @@ impl ExpectPromps for PtySession {
 fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
-    fs::write(temp_dir.path().join("config.json"), "abc")?;
+    fs::write(temp_dir.path().join("README.md"), "foo")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    do_initial_commit(&repo, "docs(readme): initial draft")?;
+
+    fs::write(temp_dir.path().join("config.json"), "bar")?;
     // TODO properly test "-a"
     repo.index()?
-        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
     repo.index()?.write()?;
 
     let mut cmd = Command::new(bin_path);
@@ -116,7 +129,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
         panic!("Command exited non-zero, end of output: {:?}", eof_output);
     }
 
-    let commit = get_first_commit(&repo)?;
+    let commit = get_last_commit(&repo)?;
     assert_eq!(
         commit.summary(),
         Some("feat(config)!: refactor config pairs")
@@ -146,7 +159,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
         .arg("-C")
         .arg(temp_dir.path())
         .arg("--hook")
-        .arg("--autocomplete=false");
+        .arg("--autocomplete=true");
 
     let mut process = spawn_command(cmd, Some(5000))?;
 
