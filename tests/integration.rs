@@ -1,4 +1,4 @@
-use git2::{Commit, Repository, RepositoryInitOptions, IndexAddOption};
+use git2::{Commit, IndexAddOption, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
@@ -77,10 +77,9 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
     // TODO properly test "-a"
-    // println!("{:?}", repo.status_file(Path::new("config.json"))?);
     repo.index()?
         .add_all(["*"].iter(), IndexAddOption::default(), None)?;
-    // println!("{:?}", repo.status_file(Path::new("config.json"))?);
+    repo.index()?.write()?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -139,6 +138,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     fs::write(temp_dir.path().join("config.json"), "abc")?;
     repo.index()?
         .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
