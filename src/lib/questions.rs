@@ -94,13 +94,8 @@ impl ScopeAutocompleter {
         let repo =
             Repository::discover(&self.config.workdir).context("could not find git repository")?;
 
-        match repo.is_empty() {
-            Ok(empty) => {
-                if empty {
-                    return Ok(Vec::new());
-                }
-            }
-            Err(_) => return Ok(Vec::new()),
+        if repo.is_empty()? {
+            return Ok(Vec::new());
         }
 
         let mut walk = repo.revwalk()?;
@@ -130,7 +125,7 @@ impl ScopeAutocompleter {
 
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        let existing_scopes = self.get_existing_scopes()?;
+        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
 
         Ok(existing_scopes
             .iter()
