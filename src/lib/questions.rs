@@ -94,10 +94,6 @@ impl ScopeAutocompleter {
         let repo =
             Repository::discover(&self.config.workdir).context("could not find git repository")?;
 
-        if repo.is_empty()? {
-            return Ok(Vec::new());
-        }
-
         let mut walk = repo.revwalk()?;
 
         walk.push_head()?;
