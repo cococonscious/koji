@@ -1,4 +1,5 @@
 use std::fs::read_to_string;
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
@@ -87,6 +88,13 @@ struct Args {
 
     #[arg(short, long, help = "Stage all tracked modified or deleted files")]
     all: bool,
+
+    #[arg(
+        short = 'C',
+        value_name = "PATH",
+        help = "Run as if koji was started in <path>"
+    )]
+    current_workdir: Option<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -108,6 +116,7 @@ fn main() -> Result<()> {
         issues,
         sign,
         all,
+        current_workdir,
     } = Args::parse();
 
     if command.is_some() {
@@ -119,9 +128,13 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    let current_dir = match current_workdir {
+        Some(dir) => dir,
+        None => std::env::current_dir()?,
+    };
+
     // Find repo
-    let repo =
-        Repository::discover(std::env::current_dir()?).context("could not find git repository")?;
+    let repo = Repository::discover(&current_dir).context("could not find git repository")?;
 
     // Get existing commit message (passed in via `-m`)
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
@@ -145,7 +158,7 @@ fn main() -> Result<()> {
         path: config,
         sign,
         _user_config_path: None,
-        _current_dir: None,
+        _current_dir: Some(current_dir.clone()),
     }))?;
 
     // Get answers from interactive prompt
@@ -176,7 +189,7 @@ fn main() -> Result<()> {
             update_files: false,
         };
 
-        commit(options)?;
+        commit(current_dir, options)?;
     }
 
     Ok(())

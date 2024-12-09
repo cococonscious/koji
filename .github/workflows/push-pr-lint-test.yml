@@ -10,6 +10,9 @@ on:
       - main
   pull_request:
 
+env:
+  ACT: false
+
 jobs:
   test:
     name: cargo test
@@ -25,6 +28,7 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
+      - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
       - run: cargo test --all-features
 
   coverage:
@@ -40,11 +44,15 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo install cargo-tarpaulin
-      - run: cargo tarpaulin --out Xml
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-tarpaulin
+      - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
+      - run: cargo tarpaulin --out Xml --engine llvm
       - uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          dry_run: ${{ env.ACT }}
 
   lints:
     name: cargo clippy & fmt
@@ -60,7 +68,6 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      - run: rustup component add rustfmt clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo fmt --all -- --check

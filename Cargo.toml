@@ -22,7 +22,7 @@ path = "src/lib/lib.rs"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4", features = ["derive"] }
-cocogitto = { version = "6.1", default-features = false }
+cocogitto = { version = "6.2", default-features = false }
 conventional_commit_parser = "0.9"
 dirs = "5.0"
 emojis = "0.6"
@@ -37,8 +37,13 @@ clap_complete_command = { version = "0.6.1", features = ["nushell"]}
 vendored-openssl = ["git2/vendored-openssl"]
 
 [dev-dependencies]
+assert_cmd = "2.0.16"
+predicates = "3.1.2"
 rusty-hook = "0.11"
 tempfile = "3.12.0"
+
+[target.'cfg(not(windows))'.dev-dependencies]
+rexpect = "0.6.0"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
