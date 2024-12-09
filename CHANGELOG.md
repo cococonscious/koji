@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [4.0.0](https://github.com/cococonscious/koji/compare/v3.0.0...v4.0.0) - 2024-12-09
+
+### Changed
+
+- git-like -C argument, integration tests (#103)
+
 ## [3.0.0](https://github.com/cococonscious/koji/compare/v2.2.0...v3.0.0) - 2024-11-26
 
 ### Added
