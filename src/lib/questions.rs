@@ -134,6 +134,7 @@ impl Autocomplete for ScopeAutocompleter {
             .collect())
     }
 
+    #[cfg(not(tarpaulin_include))]
     fn get_completion(
         &mut self,
         _input: &str,

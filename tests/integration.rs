@@ -105,21 +105,28 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
 
     process.expect_commit_type()?;
     process.send_line("feat")?;
+    process.flush()?;
     process.expect_scope()?;
     process.send_line("config")?;
+    process.flush()?;
     process.expect_summary()?;
     process.send_line("refactor config pairs")?;
+    process.flush()?;
     process.expect_body()?;
     process
         .send_line("Removed and added a config pair each\\nNecessary for future compatibility.")?;
     process.expect_breaking()?;
     process.send_line("Y")?;
+    process.flush()?;
     process.expect_breaking_details()?;
     process.send_line("Something can't be configured anymore")?;
+    process.flush()?;
     process.expect_issues()?;
     process.send_line("Y")?;
+    process.flush()?;
     process.expect_issues_details()?;
     process.send_line("closes #1")?;
+    process.flush()?;
     let eof_output = process.exp_eof();
 
     let exitcode = process.process.wait()?;
@@ -165,16 +172,22 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
 
     process.expect_commit_type()?;
     process.send_line("fix")?;
+    process.flush()?;
     process.expect_scope()?;
     process.send_line("")?;
+    process.flush()?;
     process.expect_summary()?;
     process.send_line("some weird error")?;
+    process.flush()?;
     process.expect_body()?;
     process.send_line("")?;
+    process.flush()?;
     process.expect_breaking()?;
     process.send_line("N")?;
+    process.flush()?;
     process.expect_issues()?;
     process.send_line("N")?;
+    process.flush()?;
     let eof_output = process.exp_eof();
 
     let exitcode = process.process.wait()?;
