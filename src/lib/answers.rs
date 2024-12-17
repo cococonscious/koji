@@ -96,7 +96,9 @@ pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<Extrac
 
 #[cfg(test)]
 mod tests {
-    use crate::config::Config;
+    use std::error::Error;
+    use std::result::Result;
+
     use cocogitto::CocoGitto;
 
     use super::*;
@@ -104,33 +106,47 @@ mod tests {
     use indexmap::indexmap;
 
     #[test]
-    fn test_get_summary() {
-        let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types;
+    fn test_get_summary() -> Result<(), Box<dyn Error>> {
+        let commit_types = indexmap! {
+            "docs".into() => CommitType {
+                name: "docs".into(),
+                description: "Changes to documentation".into(),
+                emoji: Some("📚".to_string()),
+            },
+        };
 
         let answer = "needed more badges";
 
         assert_eq!(
-            get_summary(answer, false, "docs", &commit_types).unwrap(),
+            get_summary(answer, false, "docs", &commit_types)?,
             "needed more badges"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_summary_with_emoji() {
-        let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types;
+    fn test_get_summary_with_emoji() -> Result<(), Box<dyn Error>> {
+        let commit_types = indexmap! {
+            "docs".into() => CommitType {
+                name: "docs".into(),
+                description: "Changes to documentation".into(),
+                emoji: Some("📚".to_string()),
+            },
+        };
 
         let answer = "needed more badges";
 
         assert_eq!(
-            get_summary(answer, true, "docs", &commit_types).unwrap(),
+            get_summary(answer, true, "docs", &commit_types)?,
             "📚 needed more badges"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_summary_with_non_configured_emoji() {
+    fn test_get_summary_with_non_configured_emoji() -> Result<(), Box<dyn Error>> {
         let commit_types = indexmap! {
             "docs".into() => CommitType {
                 name: "docs".into(),
@@ -142,26 +158,35 @@ mod tests {
         let answer = "needed more badges";
 
         assert_eq!(
-            get_summary(answer, true, "docs", &commit_types).unwrap(),
+            get_summary(answer, true, "docs", &commit_types)?,
             "needed more badges"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_summary_with_shortcode() {
-        let config = Config::new(None).unwrap();
-        let commit_types = config.commit_types;
+    fn test_get_summary_with_shortcode() -> Result<(), Box<dyn Error>> {
+        let commit_types = indexmap! {
+            "docs".into() => CommitType {
+                name: "docs".into(),
+                description: "Changes to documentation".into(),
+                emoji: None,
+            },
+        };
 
         let answer = "needed more badges :badger:";
 
         assert_eq!(
-            get_summary(answer, false, "docs", &commit_types).unwrap(),
+            get_summary(answer, false, "docs", &commit_types)?,
             "needed more badges 🦡"
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_into_breaking_footer() {
+    fn test_into_breaking_footer() -> Result<(), Box<dyn Error>> {
         let breaking_text = Some("this is a breaking change".to_string());
         assert_eq!(
             into_breaking_footer(&breaking_text),
@@ -170,10 +195,12 @@ mod tests {
 
         let breaking_text = None;
         assert_eq!(into_breaking_footer(&breaking_text), None);
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_amended_body() {
+    fn test_get_amended_body() -> Result<(), Box<dyn Error>> {
         let body = Some("i _really_ like badges".to_string());
         let issue_reference = Some("closes #1".to_string());
         let breaking_text = Some("BREAKING CHANGE: this is a breaking change".to_string());
@@ -205,7 +232,6 @@ mod tests {
             get_amended_body(&None, &issue_reference, &breaking_text),
             Some("closes #1\nBREAKING CHANGE: this is a breaking change".into())
         );
-
         assert_eq!(
             get_amended_body(&None, &issue_reference, &None),
             Some("closes #1".into())
@@ -217,10 +243,14 @@ mod tests {
         );
 
         assert_eq!(get_amended_body(&None, &None, &None), None);
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_extracted_answers() {
+    fn test_get_extracted_answers() -> Result<(), Box<dyn Error>> {
+        let tmpdir = tempfile::tempdir()?;
+
         let answers = Answers {
             commit_type: "feat".into(),
             scope: Some("space".into()),
@@ -231,8 +261,11 @@ mod tests {
             breaking_change_footer: Some("this is a breaking change".into()),
         };
 
-        let config = Config::new(None).unwrap();
-        let extracted_answers = get_extracted_answers(answers, &config).unwrap();
+        let config = Config::new(Some(crate::config::ConfigArgs {
+            _user_config_path: Some(tmpdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+        let extracted_answers = get_extracted_answers(answers, &config)?;
 
         assert_eq!(
             extracted_answers,
@@ -252,8 +285,7 @@ mod tests {
             extracted_answers.body,
             None,
             extracted_answers.is_breaking_change,
-        )
-        .unwrap();
+        )?;
 
         assert_eq!(
             message,
@@ -272,7 +304,7 @@ mod tests {
             breaking_change_footer: Some("this is a breaking change".into()),
         };
 
-        let extracted_answers = get_extracted_answers(answers, &config).unwrap();
+        let extracted_answers = get_extracted_answers(answers, &config)?;
 
         assert_eq!(
             extracted_answers,
@@ -284,5 +316,7 @@ mod tests {
                 is_breaking_change: false,
             }
         );
+
+        Ok(())
     }
 }

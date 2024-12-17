@@ -47,7 +47,7 @@ struct Args {
         help_heading = Some("Configuration"),
         help = "Path to a custom config file"
     )]
-    config: Option<String>,
+    config: Option<PathBuf>,
 
     #[arg(
         long,
