@@ -7,6 +7,13 @@ use rexpect::{
 use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
+fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
+    let temp_dir = tempfile::tempdir()?;
+    std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
+
+    Ok(temp_dir)
+}
+
 fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     let bin_path = assert_cmd::cargo::cargo_bin("koji");
     let temp_dir = tempfile::tempdir()?;
@@ -82,6 +89,7 @@ impl ExpectPromps for PtySession {
 #[cfg(not(target_os = "windows"))]
 fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("README.md"), "foo")?;
     repo.index()?
@@ -147,6 +155,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     );
 
     temp_dir.close()?;
+    config_temp_dir.close()?;
     Ok(())
 }
 
@@ -154,6 +163,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
 #[cfg(not(target_os = "windows"))]
 fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
     repo.index()?
@@ -205,6 +215,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     );
 
     temp_dir.close()?;
+    config_temp_dir.close()?;
     Ok(())
 }
 
@@ -212,6 +223,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
 #[cfg(not(target_os = "windows"))]
 fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("Cargo.toml"), "bar")?;
     repo.index()?
@@ -262,6 +274,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     assert_eq!(commit.body(), Some("Renamed the project to a new name."));
 
     temp_dir.close()?;
+    config_temp_dir.close()?;
     Ok(())
 }
 

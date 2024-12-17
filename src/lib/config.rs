@@ -1,9 +1,10 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+use config::FileFormat;
 use dirs::config_dir;
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::env::current_dir;
 use std::path::PathBuf;
-use std::{env::current_dir, fs::read_to_string, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -23,20 +24,20 @@ pub struct CommitType {
     pub name: String,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 struct ConfigTOML {
-    pub autocomplete: Option<bool>,
-    pub breaking_changes: Option<bool>,
+    pub autocomplete: bool,
+    pub breaking_changes: bool,
     #[serde(default)]
     commit_types: Vec<CommitType>,
-    pub emoji: Option<bool>,
-    pub issues: Option<bool>,
-    pub sign: Option<bool>,
+    pub emoji: bool,
+    pub issues: bool,
+    pub sign: bool,
 }
 
 #[derive(Default)]
 pub struct ConfigArgs {
-    pub path: Option<String>,
+    pub path: Option<PathBuf>,
     pub autocomplete: Option<bool>,
     pub breaking_changes: Option<bool>,
     pub emoji: Option<bool>,
@@ -60,51 +61,30 @@ impl Config {
             _current_dir,
         } = args.unwrap_or_default();
 
+        let mut settings = config::Config::builder();
+
         let workdir = _current_dir.unwrap_or(current_dir()?);
 
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
-        let default_config: ConfigTOML =
-            toml::from_str(default_str).context("could not parse config file")?;
-
-        let mut parsed: Option<ConfigTOML> = None;
+        settings = settings.add_source(config::File::from_str(default_str, FileFormat::Toml));
 
         // Try to get config from users config directory
         let config_dir_path = _user_config_path
             .unwrap_or(config_dir().unwrap())
             .join("koji/config.toml");
-        if Path::new(&config_dir_path).exists() {
-            let contents = read_to_string(config_dir_path).context("could not read config")?;
-            parsed = Some(toml::from_str(&contents).context("could not parse config")?);
-        };
+        settings = settings.add_source(config::File::from(config_dir_path).required(false));
 
         // Try to get config from working directory
         let working_dir_path = workdir.join(".koji.toml");
-        if Path::new(&working_dir_path).exists() {
-            let contents = read_to_string(working_dir_path).context("could not read config")?;
-            parsed = Some(toml::from_str(&contents).context("could not parse config")?);
-        };
+        settings = settings.add_source(config::File::from(working_dir_path).required(false));
 
         // Try to get config from passed directory
         if let Some(path) = path {
-            if Path::new(&path).exists() {
-                let contents = read_to_string(&path).context("could not read config")?;
-                parsed = Some(toml::from_str(&contents).context("could not parse config")?);
-            }
+            settings = settings.add_source(config::File::from(path).required(false));
         }
 
-        // If the users' config doesn't have any commit types,
-        // merge in the defaults
-        let config = match parsed {
-            Some(mut config) => {
-                if config.commit_types.is_empty() {
-                    config.commit_types = default_config.commit_types;
-                }
-
-                config
-            }
-            None => default_config,
-        };
+        let config: ConfigTOML = settings.build()?.try_deserialize()?;
 
         // Gather up commit types
         let mut commit_types = IndexMap::new();
@@ -113,12 +93,12 @@ impl Config {
         }
 
         Ok(Config {
-            autocomplete: autocomplete.unwrap_or(config.autocomplete.unwrap_or(false)),
-            breaking_changes: breaking_changes.unwrap_or(config.breaking_changes.unwrap_or(true)),
+            autocomplete: autocomplete.unwrap_or(config.autocomplete),
+            breaking_changes: breaking_changes.unwrap_or(config.breaking_changes),
             commit_types,
-            emoji: emoji.unwrap_or(config.emoji.unwrap_or(false)),
-            issues: issues.unwrap_or(config.issues.unwrap_or(true)),
-            sign: sign.unwrap_or(config.sign.unwrap_or(false)),
+            emoji: emoji.unwrap_or(config.emoji),
+            issues: issues.unwrap_or(config.issues),
+            sign: sign.unwrap_or(config.sign),
             workdir,
         })
     }
@@ -127,41 +107,36 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
 
     #[test]
-    fn test_from_path() {
-        let tempdir = tempfile::tempdir().unwrap();
+    fn test_from_path() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
         std::fs::write(
             tempdir.path().join("my-koji.toml"),
             "[[commit_types]]\nname=\"1234\"\ndescription=\"test\"",
-        )
-        .unwrap();
+        )?;
 
         let config = Config::new(Some(ConfigArgs {
-            path: Some(
-                tempdir
-                    .path()
-                    .join("my-koji.toml")
-                    .to_string_lossy()
-                    .to_string(),
-            ),
+            path: Some(tempdir.path().join("my-koji.toml")),
             ..ConfigArgs::default()
         }));
 
         assert!(config.is_ok());
-        assert!(config.unwrap().commit_types.get("1234").is_some());
+        assert!(config?.commit_types.get("1234").is_some());
 
-        tempdir.close().unwrap();
+        tempdir.close()?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_local_config() {
-        let tempdir = tempfile::tempdir().unwrap();
+    fn test_local_config() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
         std::fs::write(
             tempdir.path().join(".koji.toml"),
             "[[commit_types]]\nname=\"123\"\ndescription=\"test\"",
-        )
-        .unwrap();
+        )?;
 
         let config = Config::new(Some(ConfigArgs {
             _current_dir: Some(tempdir.path().to_path_buf()),
@@ -169,21 +144,22 @@ mod tests {
         }));
 
         assert!(config.is_ok());
-        assert!(config.unwrap().commit_types.get("123").is_some());
+        assert!(config?.commit_types.get("123").is_some());
 
-        tempdir.close().unwrap();
+        tempdir.close()?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_user_config_config() {
-        let tempdir_current = tempfile::tempdir().unwrap();
-        let tempdir_config = tempfile::tempdir().unwrap();
-        std::fs::create_dir(tempdir_config.path().join("koji")).unwrap();
+    fn test_user_config_config() -> Result<(), Box<dyn Error>> {
+        let tempdir_current = tempfile::tempdir()?;
+        let tempdir_config = tempfile::tempdir()?;
+        std::fs::create_dir(tempdir_config.path().join("koji"))?;
         std::fs::write(
             tempdir_config.path().join("koji").join("config.toml"),
             "[[commit_types]]\nname=\"12345\"\ndescription=\"test\"",
-        )
-        .unwrap();
+        )?;
 
         let config = Config::new(Some(ConfigArgs {
             _user_config_path: Some(tempdir_config.path().to_path_buf()),
@@ -192,15 +168,55 @@ mod tests {
         }));
 
         assert!(config.is_ok());
-        assert!(config.unwrap().commit_types.get("12345").is_some());
+        assert!(config?.commit_types.get("12345").is_some());
 
-        tempdir_current.close().unwrap();
-        tempdir_config.close().unwrap();
+        tempdir_current.close()?;
+        tempdir_config.close()?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_non_custom_use_defaults() {
-        let tempdir = tempfile::tempdir().unwrap();
+    fn test_all_config_sources() -> Result<(), Box<dyn Error>> {
+        let tempdir_config = tempfile::tempdir()?;
+        std::fs::create_dir(tempdir_config.path().join("koji"))?;
+        std::fs::write(
+            tempdir_config.path().join("koji").join("config.toml"),
+            "[[commit_types]]\nname=\"12345\"\ndescription=\"test\"",
+        )?;
+        let tempdir_current = tempfile::tempdir()?;
+        std::fs::write(tempdir_current.path().join(".koji.toml"), "emoji=\"true\"")?;
+        let tempdir_path = tempfile::tempdir()?;
+        std::fs::write(tempdir_path.path().join("custom.toml"), "autocomplete=true")?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _user_config_path: Some(tempdir_config.path().to_path_buf()),
+            _current_dir: Some(tempdir_current.path().to_path_buf()),
+            path: Some(tempdir_path.path().join("custom.toml").to_path_buf()),
+            emoji: Some(false),
+            ..Default::default()
+        }))?;
+
+        // from user config dir
+        assert!(config.commit_types.get("12345").is_some());
+        assert!(config.commit_types.len() == 1);
+        // set by current dir config and directly, which overwrites the former
+        assert!(!config.emoji);
+        // set by passed config path
+        assert!(config.autocomplete);
+        // a default
+        assert!(!config.sign);
+
+        tempdir_current.close()?;
+        tempdir_config.close()?;
+        tempdir_path.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_non_custom_use_defaults() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
 
         let config = Config::new(Some(ConfigArgs {
             _current_dir: Some(tempdir.path().to_path_buf()),
@@ -209,40 +225,44 @@ mod tests {
         }));
 
         assert!(config.is_ok());
-        assert!(!config.unwrap().commit_types.len() > 0);
+        assert!(!config?.commit_types.len() > 0);
 
-        tempdir.close().unwrap();
+        tempdir.close()?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_breaking_changes() {
-        let config = Config::new(None).unwrap();
+    fn test_breaking_changes() -> Result<(), Box<dyn Error>> {
+        let config = Config::new(None)?;
         assert!(config.breaking_changes);
 
         let config = Config::new(Some(ConfigArgs {
             breaking_changes: Some(false),
             ..Default::default()
-        }))
-        .unwrap();
+        }))?;
         assert!(!config.breaking_changes);
+
+        Ok(())
     }
 
     #[test]
-    fn test_issues() {
-        let config = Config::new(None).unwrap();
+    fn test_issues() -> Result<(), Box<dyn Error>> {
+        let config = Config::new(None)?;
         assert!(config.issues);
 
         let config = Config::new(Some(ConfigArgs {
             issues: Some(false),
             ..Default::default()
-        }))
-        .unwrap();
+        }))?;
         assert!(!config.issues);
+
+        Ok(())
     }
 
     #[test]
-    fn test_commit_types() {
-        let config = Config::new(None).unwrap();
+    fn test_commit_types() -> Result<(), Box<dyn Error>> {
+        let config = Config::new(None)?;
         let commit_types = config.commit_types;
 
         assert_eq!(
@@ -252,6 +272,8 @@ mod tests {
                 emoji: Some("✨".into()),
                 description: "A new feature".into()
             })
-        )
+        );
+
+        Ok(())
     }
 }

@@ -1,6 +1,8 @@
+autocomplete = false
 breaking_changes = true
 issues = true
 emoji = false
+sign = false
 
 [[commit_types]]
 name = "feat"

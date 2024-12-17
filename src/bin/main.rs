@@ -47,7 +47,7 @@ struct Args {
         help_heading = Some("Configuration"),
         help = "Path to a custom config file"
     )]
-    config: Option<String>,
+    config: Option<PathBuf>,
 
     #[arg(
         long,
@@ -171,7 +171,7 @@ fn main() -> Result<()> {
         is_breaking_change,
         scope,
         summary,
-    } = get_extracted_answers(answers, &config)?;
+    } = get_extracted_answers(answers, config.emoji, &config.commit_types)?;
 
     // Do the thing!
     if hook {

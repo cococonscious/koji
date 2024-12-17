@@ -29,9 +29,9 @@ emojis = "0.6"
 git2 = "0.18"
 indexmap = "2.1"
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"
-inquire = "0.7.5"
-clap_complete_command = { version = "0.6.1", features = ["nushell"]}
+inquire = "0.7"
+clap_complete_command = { version = "0.6", features = ["nushell"]}
+config = { version = "0.14", features = ["toml"] }
 
 [features]
 vendored-openssl = ["git2/vendored-openssl"]
