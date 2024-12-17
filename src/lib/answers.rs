@@ -1,11 +1,7 @@
 use anyhow::Result;
 use indexmap::IndexMap;
 
-use crate::{
-    config::{CommitType, Config},
-    emoji::ReplaceEmoji,
-    questions::Answers,
-};
+use crate::{config::CommitType, emoji::ReplaceEmoji, questions::Answers};
 
 /// Get the summary, prepending a relevant emoji if enabled
 fn get_summary(
@@ -67,7 +63,11 @@ pub struct ExtractedAnswers {
 
 /// Extract the prompt answers into an `ExtractedAnswers`,
 /// making it usable for creating a commit
-pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<ExtractedAnswers> {
+pub fn get_extracted_answers(
+    answers: Answers,
+    emoji: bool,
+    commit_types: &IndexMap<String, CommitType>,
+) -> Result<ExtractedAnswers> {
     // The breaking change footer text should never be present if `is_breaking_change` is false, but
     // we're checking for it anyway
     let breaking_change_footer: Option<String> = if answers.is_breaking_change {
@@ -79,12 +79,7 @@ pub fn get_extracted_answers(answers: Answers, config: &Config) -> Result<Extrac
     Ok(ExtractedAnswers {
         commit_type: answers.commit_type.clone(),
         scope: answers.scope.map(|s| s.replace_emoji_shortcodes()),
-        summary: get_summary(
-            &answers.summary,
-            config.emoji,
-            &answers.commit_type,
-            &config.commit_types,
-        )?,
+        summary: get_summary(&answers.summary, emoji, &answers.commit_type, commit_types)?,
         body: get_amended_body(
             &answers.body,
             &answers.issue_footer,
@@ -249,8 +244,6 @@ mod tests {
 
     #[test]
     fn test_get_extracted_answers() -> Result<(), Box<dyn Error>> {
-        let tmpdir = tempfile::tempdir()?;
-
         let answers = Answers {
             commit_type: "feat".into(),
             scope: Some("space".into()),
@@ -261,11 +254,15 @@ mod tests {
             breaking_change_footer: Some("this is a breaking change".into()),
         };
 
-        let config = Config::new(Some(crate::config::ConfigArgs {
-            _user_config_path: Some(tmpdir.path().to_path_buf()),
-            ..Default::default()
-        }))?;
-        let extracted_answers = get_extracted_answers(answers, &config)?;
+        let commit_types = indexmap! {
+            "feat".into() => CommitType {
+                name: "feat".into(),
+                description: "A new feature".into(),
+                emoji: Some("✨".to_string()),
+            },
+        };
+
+        let extracted_answers = get_extracted_answers(answers, false, &commit_types)?;
 
         assert_eq!(
             extracted_answers,
@@ -304,7 +301,7 @@ mod tests {
             breaking_change_footer: Some("this is a breaking change".into()),
         };
 
-        let extracted_answers = get_extracted_answers(answers, &config)?;
+        let extracted_answers = get_extracted_answers(answers, false, &commit_types)?;
 
         assert_eq!(
             extracted_answers,

@@ -84,18 +84,6 @@ impl Config {
             settings = settings.add_source(config::File::from(path).required(false));
         }
 
-        // merge in the defaults
-        // let config = match parsed {
-        // Some(mut config) => {
-        // if config.commit_types.is_empty() {
-        // config.commit_types = default_config.commit_types;
-        // }
-        //
-        // config
-        // }
-        // None => default_config,
-        // };
-
         let config: ConfigTOML = settings.build()?.try_deserialize()?;
 
         // Gather up commit types
