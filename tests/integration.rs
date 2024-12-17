@@ -336,6 +336,23 @@ fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn test_all_hook_exclusive_error() -> Result<(), Box<dyn Error>> {
+    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("--hook");
+    cmd.arg("--all");
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!cmd_out.status.success());
+    assert!(stderr_out.contains("the argument '--hook' cannot be used with '--all'"));
+
+    Ok(())
+}
+
+#[test]
 fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
     fn run_for(shell: &'static str, containing: &'static str) -> Result<(), Box<dyn Error>> {
         let bin_path = assert_cmd::cargo::cargo_bin("koji");

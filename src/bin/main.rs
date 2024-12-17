@@ -61,7 +61,8 @@ struct Args {
 
     #[arg(
         long,
-        help = "Run as a git hook, writing the commit message to COMMIT_EDITMSG instead of committing"
+        help = "Run as a git hook, writing the commit message to COMMIT_EDITMSG instead of committing",
+        conflicts_with = "all"
     )]
     hook: bool,
 
