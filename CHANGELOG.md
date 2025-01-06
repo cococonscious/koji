@@ -3,17 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
-## [4.0.0](https://github.com/cococonscious/koji/compare/v3.0.0...v4.0.0) - 2025-01-06
+## [3.1.0](https://github.com/cococonscious/koji/compare/v3.0.0...v3.1.0) - 2025-01-06
+
+### Added
+
+- git-like -C argument, integration tests (#103)
 
 ### Changed
 
-- *(deps)* update codecov/codecov-action action to v5.1.2 (#123)
-- *(deps)* update all non-major dependencies (#122)
+- *(deps)* update codecov/codecov-action action to v5.1.2 (#123, #116)
+- *(deps)* update all non-major dependencies (#122, #112)
 - *(deps)* update rust crate serde to v1.0.216 (#119)
-- *(deps)* update all non-major dependencies (#112)
 - *(deps)* update actions/cache action to v4.2.0 (#113)
-- *(deps)* update codecov/codecov-action action to v5 (#116)
-- git-like -C argument, integration tests (#103)
 
 ### Fixed
 
