@@ -48,7 +48,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-tarpaulin
       - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
       - run: cargo tarpaulin --out Xml --engine llvm
-      - uses: codecov/codecov-action@v5.1.1
+      - uses: codecov/codecov-action@v5.1.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
