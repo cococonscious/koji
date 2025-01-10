@@ -69,7 +69,8 @@ struct Args {
     #[arg(
         long,
         help = "Outputs the commit message to stdout instead of committing",
-        conflicts_with = "all"
+        conflicts_with = "all",
+        conflicts_with = "hook"
     )]
     stdout: bool,
 
