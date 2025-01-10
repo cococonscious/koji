@@ -7,7 +7,7 @@ use cocogitto::command::commit::CommitOptions;
 use conventional_commit_parser::parse;
 use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
-use koji::commit::{commit, write_commit_msg};
+use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
 use koji::questions::create_prompt;
 
@@ -68,6 +68,13 @@ struct Args {
 
     #[arg(
         long,
+        help = "Outputs the commit message to stdout instead of committing",
+        conflicts_with = "all"
+    )]
+    stdout: bool,
+
+    #[arg(
+        long,
         default_missing_value = "true",
         num_args = 0..=1,
         value_name = "ENABLE",
@@ -114,6 +121,7 @@ fn main() -> Result<()> {
         config,
         emoji,
         hook,
+        stdout,
         issues,
         sign,
         all,
@@ -177,6 +185,11 @@ fn main() -> Result<()> {
     // Do the thing!
     if hook {
         write_commit_msg(&repo, commit_type, scope, summary, body, is_breaking_change)?;
+    } else if stdout {
+        println!(
+            "{}",
+            generate_commit_msg(commit_type, scope, summary, body, is_breaking_change)?
+        );
     } else {
         let options = CommitOptions {
             commit_type: commit_type.as_str(),
