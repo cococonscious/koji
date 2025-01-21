@@ -221,6 +221,69 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[cfg(not(target_os = "windows"))]
+fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(temp_dir.path().join("config.json"), "abc")?;
+    repo.index()?
+        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
+    fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout")
+        .arg("--autocomplete=true");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("fix")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("some weird error")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let expected_output = "fix: some weird error";
+
+    let _ = process
+        .exp_string(expected_output)
+        .expect("failed to match output");
+
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+    }
+
+    let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
+    assert!(!editmsg.exists());
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
 fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
@@ -348,6 +411,40 @@ fn test_all_hook_exclusive_error() -> Result<(), Box<dyn Error>> {
 
     assert!(!cmd_out.status.success());
     assert!(stderr_out.contains("the argument '--hook' cannot be used with '--all'"));
+
+    Ok(())
+}
+
+#[test]
+fn test_all_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
+    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("--stdout");
+    cmd.arg("--all");
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!cmd_out.status.success());
+    assert!(stderr_out.contains("the argument '--stdout' cannot be used with '--all'"));
+
+    Ok(())
+}
+
+#[test]
+fn test_hook_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
+    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("--stdout");
+    cmd.arg("--hook");
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!cmd_out.status.success());
+    assert!(stderr_out.contains("the argument '--stdout' cannot be used with '--hook'"));
 
     Ok(())
 }

@@ -5,6 +5,26 @@ use cocogitto::command::commit::CommitOptions;
 use cocogitto::CocoGitto;
 use git2::Repository;
 
+/// Generates the commit message
+pub fn generate_commit_msg(
+    commit_type: String,
+    scope: Option<String>,
+    summary: String,
+    body: Option<String>,
+    is_breaking_change: bool,
+) -> Result<String> {
+    let message = CocoGitto::get_conventional_message(
+        &commit_type,
+        scope,
+        summary,
+        body,
+        None,
+        is_breaking_change,
+    )?;
+
+    Ok(message)
+}
+
 /// Output a commit message to `.git/COMMIT_EDITMSG`
 pub fn write_commit_msg(
     repo: &Repository,
@@ -14,14 +34,7 @@ pub fn write_commit_msg(
     body: Option<String>,
     is_breaking_change: bool,
 ) -> Result<()> {
-    let message = CocoGitto::get_conventional_message(
-        &commit_type,
-        scope,
-        summary,
-        body,
-        None,
-        is_breaking_change,
-    )?;
+    let message = generate_commit_msg(commit_type, scope, summary, body, is_breaking_change)?;
 
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
     let mut file = File::create(commit_editmsg)?;
