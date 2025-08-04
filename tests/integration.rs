@@ -145,7 +145,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
@@ -208,7 +208,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
@@ -275,7 +275,7 @@ fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
@@ -333,7 +333,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
