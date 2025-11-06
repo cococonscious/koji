@@ -21,6 +21,10 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     init_options.initial_head("main");
     let repo = Repository::init_opts(&temp_dir, &init_options)?;
 
+    let mut gitconfig = repo.config()?;
+    gitconfig.set_str("user.name", "test")?;
+    gitconfig.set_str("user.email", "test@example.org")?;
+
     Ok((bin_path, temp_dir, repo))
 }
 
@@ -474,4 +478,75 @@ fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
         "Register-ArgumentCompleter -Native -CommandName 'koji'",
     )?;
     run_for("zsh", "#compdef koji")
+}
+
+#[test]
+fn test_xdg_config_on_macos() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(temp_dir.path().join("README.md"), "foo")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    do_initial_commit(&repo, "docs(readme): initial draft")?;
+
+    fs::write(temp_dir.path().join("config.json"), "bar")?;
+    // TODO properly test "-a"
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
+
+    let mut config_dir = std::env::current_dir()?;
+    config_dir.push("meta");
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .env("XDG_CONFIG_HOME", config_dir.as_path().to_str().unwrap())
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout")
+        .arg("--autocomplete=true");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("wip")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("some weird error")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let expected_output = "wip: some weird error";
+
+    let _ = process
+        .exp_string(expected_output)
+        .expect("failed to match output");
+
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+    }
+
+    let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
+    assert!(!editmsg.exists());
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
 }

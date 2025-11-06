@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use std::env::current_dir;
 use std::path::PathBuf;
+use xdg::BaseDirectories;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -68,6 +69,11 @@ impl Config {
         // Get the default config
         let default_str = include_str!("../../meta/config/default.toml");
         settings = settings.add_source(config::File::from_str(default_str, FileFormat::Toml));
+
+        // Try to get config from xdg based config directory
+        let xdg_dirs = BaseDirectories::with_prefix("koji");
+        let xdg_config_path = xdg_dirs.get_config_file("config.toml").unwrap();
+        settings = settings.add_source(config::File::from(xdg_config_path).required(false));
 
         // Try to get config from users config directory
         let config_dir_path = _user_config_path

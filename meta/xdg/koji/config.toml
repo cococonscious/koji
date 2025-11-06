@@ -1,0 +1,25 @@
+autocomplete = false
+breaking_changes = true
+issues = true
+emoji = false
+sign = false
+
+[[commit_types]]
+name = "feat"
+emoji = "✨"
+description = "A new feature"
+
+[[commit_types]]
+name = "fix"
+emoji = "🐛"
+description = "A bug fix"
+
+[[commit_types]]
+name = "docs"
+emoji = "📚"
+description = "Documentation only changes"
+
+[[commit_types]]
+name = "wip"
+emoji = "👷"
+description = "Do not create PR with this commit"

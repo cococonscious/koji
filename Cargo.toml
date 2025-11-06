@@ -32,6 +32,7 @@ serde = { version = "1.0", features = ["derive"] }
 inquire = "0.7"
 clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.14", features = ["toml"] }
+xdg = "3.0.0"
 
 [features]
 vendored-openssl = ["git2/vendored-openssl"]
