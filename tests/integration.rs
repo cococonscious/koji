@@ -28,7 +28,7 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     Ok((bin_path, temp_dir, repo))
 }
 
-fn get_last_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
     let oid = walk.next().expect("cannot get commit in revwalk")?;
@@ -498,6 +498,7 @@ fn test_xdg_config_on_macos() -> Result<(), Box<dyn Error>> {
 
     let mut config_dir = std::env::current_dir()?;
     config_dir.push("meta");
+    config_dir.push("xdg");
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")

@@ -129,12 +129,13 @@ fn main() -> Result<()> {
         current_workdir,
     } = Args::parse();
 
-    if command.is_some() {
-        match command.unwrap() {
+    if let Some(command) = command {
+        match command {
             SubCmds::Completions { shell } => {
                 shell.generate(&mut Args::command(), &mut std::io::stdout());
             }
         }
+
         return Ok(());
     }
 
