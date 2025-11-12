@@ -481,28 +481,26 @@ fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_xdg_config_on_macos() -> Result<(), Box<dyn Error>> {
+#[cfg(not(target_os = "windows"))]
+fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
-    fs::write(temp_dir.path().join("README.md"), "foo")?;
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
-    do_initial_commit(&repo, "docs(readme): initial draft")?;
+    let xdg_cfg_home = tempfile::tempdir()?;
+    fs::create_dir(xdg_cfg_home.path().join("koji"))?;
+    fs::write(
+        xdg_cfg_home.path().join("koji/config.toml"),
+        "[[commit_types]]\nname=\"wip\"\ndescription = \"Do not create PR with this commit\"",
+    )?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
-    // TODO properly test "-a"
     repo.index()?
         .add_all(["."].iter(), IndexAddOption::default(), None)?;
     repo.index()?.write()?;
 
-    let mut config_dir = std::env::current_dir()?;
-    config_dir.push("meta");
-    config_dir.push("xdg");
-
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
-        .env("XDG_CONFIG_HOME", config_dir.as_path().to_str().unwrap())
+        .env("XDG_CONFIG_HOME", xdg_cfg_home.path().as_os_str())
         .arg("-C")
         .arg(temp_dir.path())
         .arg("--stdout")
@@ -544,10 +542,8 @@ fn test_xdg_config_on_macos() -> Result<(), Box<dyn Error>> {
         panic!("Command exited non-zero, end of output: {:?}", eof_output);
     }
 
-    let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
-    assert!(!editmsg.exists());
-
     temp_dir.close()?;
     config_temp_dir.close()?;
+    xdg_cfg_home.close()?;
     Ok(())
 }

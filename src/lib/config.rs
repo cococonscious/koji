@@ -70,16 +70,19 @@ impl Config {
         let default_str = include_str!("../../meta/config/default.toml");
         settings = settings.add_source(config::File::from_str(default_str, FileFormat::Toml));
 
-        // Try to get config from xdg based config directory
-        let xdg_dirs = BaseDirectories::with_prefix("koji");
-        let xdg_config_path = xdg_dirs.get_config_file("config.toml").unwrap();
-        settings = settings.add_source(config::File::from(xdg_config_path).required(false));
+        // Define the order in which configuration directories will be loaded
+        let config_dirs = vec![
+            config_dir(),
+            BaseDirectories::new().get_config_home(),
+            _user_config_path,
+        ];
 
-        // Try to get config from users config directory
-        let config_dir_path = _user_config_path
-            .unwrap_or(config_dir().unwrap())
-            .join("koji/config.toml");
-        settings = settings.add_source(config::File::from(config_dir_path).required(false));
+        settings = config_dirs
+            .into_iter()
+            .flatten()
+            .map(|d| d.join("koji/config.toml"))
+            .map(|d| config::File::from(d).required(false))
+            .fold(settings, |prev, cfg| prev.add_source(cfg));
 
         // Try to get config from working directory
         let working_dir_path = workdir.join(".koji.toml");
