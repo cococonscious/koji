@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use std::env::current_dir;
 use std::path::PathBuf;
+#[cfg(any(unix, target_os = "redox"))]
 use xdg::BaseDirectories;
 
 #[derive(Debug, Clone)]
@@ -71,11 +72,10 @@ impl Config {
         settings = settings.add_source(config::File::from_str(default_str, FileFormat::Toml));
 
         // Define the order in which configuration directories will be loaded
-        let config_dirs = vec![
-            config_dir(),
-            BaseDirectories::new().get_config_home(),
-            _user_config_path,
-        ];
+        let mut config_dirs = vec![config_dir()];
+        #[cfg(any(unix, target_os = "redox"))]
+        config_dirs.push(BaseDirectories::new().get_config_home());
+        config_dirs.push(_user_config_path);
 
         settings = config_dirs
             .into_iter()
