@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [3.3.0](https://github.com/cococonscious/koji/compare/v3.2.0...v3.3.0) - 2025-11-30
+
+### Changed
+
+- *(build)* reintroduce musl builds ([#156](https://github.com/cococonscious/koji/pull/156))
+- replace rusty-hook with prek
+- *(config)* allow reading configuration from xdg directories ([#155](https://github.com/cococonscious/koji/pull/155))
+- update all non-major dependencies ([#136](https://github.com/cococonscious/koji/pull/136))
+- *(deps)* update codecov/codecov-action action to v5.3.1 ([#135](https://github.com/cococonscious/koji/pull/135))
+
 ## [3.2.0](https://github.com/cococonscious/koji/compare/v3.1.0...v3.2.0) - 2025-01-21
 
 ### Added
