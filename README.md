@@ -80,12 +80,20 @@ exec < /dev/tty && koji --hook || true
 npx husky add .husky/prepare-commit-msg "exec < /dev/tty && koji --hook || true
 ```
 
-### [rusty-hook](https://github.com/swellaby/rusty-hook)
+### [prek](https://github.com/j178/prek) / [pre-commit](https://pre-commit.com/)
 
-Add this to your `.rusty-hook.toml`:
+Add the `prepare-commit-msg` hook type and the koji hook to `.pre-commit-config.yaml`:
 
-```toml
-prepare-commit-msg = "exec < /dev/tty && koji --hook || true"
+```yaml
+default_install_hook_types: [prepare-commit-msg, ...]
+repos:
+  - repo: local
+    hooks:
+      - id: prepare-msg
+        name: prepare commit message
+        entry: bash -c "exec < /dev/tty && koji --hook || true"
+        language: system
+        stages: [prepare-commit-msg]
 ```
 
 Similar should work for any hook runner, just make sure you're using
