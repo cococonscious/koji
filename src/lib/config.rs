@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use std::env::current_dir;
 use std::path::PathBuf;
+#[cfg(any(unix, target_os = "redox"))]
 use xdg::BaseDirectories;
 
 #[derive(Debug, Clone)]
@@ -73,6 +74,7 @@ impl Config {
         // Define the order in which configuration directories will be loaded
         let config_dirs = vec![
             config_dir(),
+            #[cfg(any(unix, target_os = "redox"))]
             BaseDirectories::new().get_config_home(),
             _user_config_path,
         ];
