@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [3.3.1](https://github.com/cococonscious/koji/compare/v3.3.0...v3.3.1) - 2025-11-30
+
+### Fixed
+
+- xdg crate not supporting windows ([#159](https://github.com/cococonscious/koji/pull/159))
+
 ## [3.3.0](https://github.com/cococonscious/koji/compare/v3.2.0...v3.3.0) - 2025-11-30
 
 ### Changed
