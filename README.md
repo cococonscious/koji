@@ -103,6 +103,7 @@ Config values are prioritized in the following order:
 - Passed in as arguments (see: `koji --help`)
 - Read from file passed in via `--config`
 - `.koji.toml` in the working directory
+- `$XDG_CONFIG_HOME/koji/config.toml`
 - `~/.config/koji/config.toml`
 - The [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml) config
 

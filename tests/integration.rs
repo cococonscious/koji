@@ -21,10 +21,14 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     init_options.initial_head("main");
     let repo = Repository::init_opts(&temp_dir, &init_options)?;
 
+    let mut gitconfig = repo.config()?;
+    gitconfig.set_str("user.name", "test")?;
+    gitconfig.set_str("user.email", "test@example.org")?;
+
     Ok((bin_path, temp_dir, repo))
 }
 
-fn get_last_commit(repo: &Repository) -> Result<Commit, git2::Error> {
+fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
     let oid = walk.next().expect("cannot get commit in revwalk")?;
@@ -474,4 +478,72 @@ fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
         "Register-ArgumentCompleter -Native -CommandName 'koji'",
     )?;
     run_for("zsh", "#compdef koji")
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_xdg_config() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    let xdg_cfg_home = tempfile::tempdir()?;
+    fs::create_dir(xdg_cfg_home.path().join("koji"))?;
+    fs::write(
+        xdg_cfg_home.path().join("koji/config.toml"),
+        "[[commit_types]]\nname=\"wip\"\ndescription = \"Do not create PR with this commit\"",
+    )?;
+
+    fs::write(temp_dir.path().join("config.json"), "bar")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .env("XDG_CONFIG_HOME", xdg_cfg_home.path().as_os_str())
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout")
+        .arg("--autocomplete=true");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("wip")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("some weird error")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let expected_output = "wip: some weird error";
+
+    let _ = process
+        .exp_string(expected_output)
+        .expect("failed to match output");
+
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+    }
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    xdg_cfg_home.close()?;
+    Ok(())
 }
