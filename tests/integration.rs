@@ -15,7 +15,7 @@ fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
 }
 
 fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
-    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
     let temp_dir = tempfile::tempdir()?;
     let mut init_options = RepositoryInitOptions::new();
     init_options.initial_head("main");
@@ -145,7 +145,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
@@ -208,7 +208,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
@@ -275,7 +275,7 @@ fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let editmsg = temp_dir.path().join(".git").join("COMMIT_EDITMSG");
@@ -333,7 +333,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
 
     if !success {
-        panic!("Command exited non-zero, end of output: {:?}", eof_output);
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
@@ -347,7 +347,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
-    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let bin_path = assert_cmd::cargo::cargo_bin!("koji");
     let temp_dir = tempfile::tempdir()?;
 
     let mut cmd = Command::new(bin_path);
@@ -404,7 +404,7 @@ fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_all_hook_exclusive_error() -> Result<(), Box<dyn Error>> {
-    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let bin_path = assert_cmd::cargo::cargo_bin!("koji");
 
     let mut cmd = Command::new(bin_path);
     cmd.arg("--hook");
@@ -421,7 +421,7 @@ fn test_all_hook_exclusive_error() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_all_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
-    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let bin_path = assert_cmd::cargo::cargo_bin!("koji");
 
     let mut cmd = Command::new(bin_path);
     cmd.arg("--stdout");
@@ -438,7 +438,7 @@ fn test_all_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_hook_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
-    let bin_path = assert_cmd::cargo::cargo_bin("koji");
+    let bin_path = assert_cmd::cargo::cargo_bin!("koji");
 
     let mut cmd = Command::new(bin_path);
     cmd.arg("--stdout");
@@ -456,7 +456,7 @@ fn test_hook_stdout_exclusive_error() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
     fn run_for(shell: &'static str, containing: &'static str) -> Result<(), Box<dyn Error>> {
-        let bin_path = assert_cmd::cargo::cargo_bin("koji");
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji");
 
         let mut cmd = Command::new(bin_path);
         cmd.arg("completions").arg(shell);
