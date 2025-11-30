@@ -46,6 +46,10 @@ pub fn write_commit_msg(
 
 /// Create a commit
 pub fn commit(current_dir: PathBuf, options: CommitOptions) -> Result<()> {
+    // Set config path before creating CocoGitto instance (required in 6.4.0+)
+    let config_path = current_dir.join("cog.toml");
+    cocogitto::set_config_path(config_path.to_string_lossy().to_string());
+
     let cocogitto = CocoGitto::get_at(current_dir)?;
 
     cocogitto.conventional_commit(options)?;
