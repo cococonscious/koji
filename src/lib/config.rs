@@ -72,9 +72,7 @@ impl Config {
         settings = settings.add_source(config::File::from_str(default_str, FileFormat::Toml));
 
         // Define the order in which configuration directories will be loaded
-        let mut config_dirs = vec![
-            config_dir(),
-        ];
+        let mut config_dirs = vec![config_dir()];
         #[cfg(any(unix, target_os = "redox"))]
         config_dirs.push(BaseDirectories::new().get_config_home());
         config_dirs.push(_user_config_path);
