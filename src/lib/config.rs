@@ -110,10 +110,17 @@ impl Config {
             commit_types.insert(commit_type.name.clone(), commit_type.to_owned());
         }
 
+        // Gather up commit scopes
+        let mut commit_scopes = IndexMap::new();
+        for commit_scope in config.commit_scopes.iter() {
+            commit_scopes.insert(commit_scope.name.clone(), commit_scope.to_owned());
+        }
+
         Ok(Config {
             autocomplete: autocomplete.unwrap_or(config.autocomplete),
             breaking_changes: breaking_changes.unwrap_or(config.breaking_changes),
             commit_types,
+            commit_scopes,
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
