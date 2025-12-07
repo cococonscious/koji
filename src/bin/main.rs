@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use cocogitto::command::commit::CommitOptions;
 use conventional_commit_parser::parse;
-use git2::Repository;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
@@ -115,6 +114,7 @@ enum SubCmds {
 #[cfg(not(tarpaulin_include))]
 fn main() -> Result<()> {
     // Get CLI args
+
     let Args {
         command,
         autocomplete,
@@ -145,7 +145,7 @@ fn main() -> Result<()> {
     };
 
     // Find repo
-    let repo = Repository::discover(&current_dir).context("could not find git repository")?;
+    let repo = gix::discover(&current_dir).context("could not find git repository")?;
 
     // Get existing commit message (passed in via `-m`)
     let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
