@@ -3,7 +3,7 @@ use std::{fs::File, io::Write, path::PathBuf};
 use anyhow::Result;
 use cocogitto::command::commit::CommitOptions;
 use cocogitto::CocoGitto;
-use git2::Repository;
+use gix::Repository;
 
 /// Generates the commit message
 pub fn generate_commit_msg(
