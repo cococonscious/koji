@@ -13,6 +13,7 @@ pub struct Config {
     pub autocomplete: bool,
     pub breaking_changes: bool,
     pub commit_types: IndexMap<String, CommitType>,
+    pub commit_scopes: IndexMap<String, CommitScope>,
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
@@ -26,12 +27,20 @@ pub struct CommitType {
     pub name: String,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct CommitScope {
+    pub name: String,
+    pub description: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct ConfigTOML {
     pub autocomplete: bool,
     pub breaking_changes: bool,
     #[serde(default)]
     commit_types: Vec<CommitType>,
+    #[serde(default)]
+    commit_scopes: Vec<CommitScope>,
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
@@ -282,6 +291,60 @@ mod tests {
                 description: "A new feature".into()
             })
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_commit_scopes() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "[[commit_scopes]]\nname=\"app\"\ndescription=\"Application code\"",
+        )?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+
+        assert!(config.commit_scopes.get("app").is_some());
+        assert_eq!(
+            config.commit_scopes.get("app"),
+            Some(&CommitScope {
+                name: "app".into(),
+                description: Some("Application code".into())
+            })
+        );
+
+        tempdir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_commit_scopes_from_config() -> Result<(), Box<dyn Error>> {
+        let tempdir_config = tempfile::tempdir()?;
+        std::fs::create_dir(tempdir_config.path().join("koji"))?;
+        std::fs::write(
+            tempdir_config.path().join("koji").join("config.toml"),
+            "[[commit_scopes]]\nname=\"server\"\ndescription=\"Server code\"\n[[commit_scopes]]\nname=\"shared\"",
+        )?;
+
+        let tempdir_current = tempfile::tempdir()?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _user_config_path: Some(tempdir_config.path().to_path_buf()),
+            _current_dir: Some(tempdir_current.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+
+        assert!(config.commit_scopes.get("server").is_some());
+        assert!(config.commit_scopes.get("shared").is_some());
+        assert_eq!(config.commit_scopes.len(), 2);
+
+        tempdir_current.close()?;
+        tempdir_config.close()?;
 
         Ok(())
     }
