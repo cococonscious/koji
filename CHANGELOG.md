@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [3.3.2](https://github.com/cococonscious/koji/compare/v3.3.1...v3.3.2) - 2025-12-15
+
+### Changed
+
+- *(deps)* update actions/checkout action to v6.0.1 ([#163](https://github.com/cococonscious/koji/pull/163))
+- *(deps)* update codecov/codecov-action action to v5.5.2 ([#165](https://github.com/cococonscious/koji/pull/165))
+- *(deps)* update actions/cache action to v5 ([#166](https://github.com/cococonscious/koji/pull/166))
+
+### Fixed
+
+- fix rexpect windows failures, more in ci ([#168](https://github.com/cococonscious/koji/pull/168))
+
 ## [3.3.1](https://github.com/cococonscious/koji/compare/v3.3.0...v3.3.1) - 2025-11-30
 
 ### Fixed
