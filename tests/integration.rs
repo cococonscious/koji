@@ -44,6 +44,7 @@ fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<Oid, gi
     repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
 }
 
+#[cfg(not(target_os = "windows"))]
 trait ExpectPromps {
     fn expect_commit_type(&mut self) -> Result<String, rexpect::error::Error>;
     fn expect_scope(&mut self) -> Result<String, rexpect::error::Error>;
@@ -55,6 +56,7 @@ trait ExpectPromps {
     fn expect_issues_details(&mut self) -> Result<String, rexpect::error::Error>;
 }
 
+#[cfg(not(target_os = "windows"))]
 impl ExpectPromps for PtySession {
     fn expect_commit_type(&mut self) -> Result<String, rexpect::error::Error> {
         self.exp_string("are you committing?")
@@ -364,6 +366,7 @@ fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
