@@ -15,8 +15,24 @@ env:
 
 jobs:
   test:
-    name: cargo test
-    runs-on: ubuntu-latest
+    name: cargo test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          # Linux
+          - ubuntu-latest
+          # macOS ARM64 - Tahoe (macOS 26 beta)
+          - macos-26
+          # macOS ARM64 - Sequoia (macOS 15)
+          - macos-15
+          # macOS ARM64 - Sonoma (macOS 14)
+          - macos-14
+          # macOS Intel - Sonoma (macOS 15 Intel)
+          - macos-15-intel
+          # Windows Server
+          - windows-latest
     steps:
       - uses: actions/checkout@v6.0.1
       - uses: actions/cache@v5.0.1
@@ -26,7 +42,9 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-cargo-
       - uses: dtolnay/rust-toolchain@stable
       - run: git config --global user.name "tests" && git config --global user.email "tests@example.org"
       - run: cargo test --all-features
