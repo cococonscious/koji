@@ -63,6 +63,7 @@ fn git_add(temp_dir: &std::path::Path, pattern: &str) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 trait ExpectPromps {
     fn expect_commit_type(&mut self) -> Result<String, rexpect::error::Error>;
     fn expect_scope(&mut self) -> Result<String, rexpect::error::Error>;
@@ -74,6 +75,7 @@ trait ExpectPromps {
     fn expect_issues_details(&mut self) -> Result<String, rexpect::error::Error>;
 }
 
+#[cfg(not(target_os = "windows"))]
 impl ExpectPromps for PtySession {
     fn expect_commit_type(&mut self) -> Result<String, rexpect::error::Error> {
         self.exp_string("are you committing?")
@@ -382,6 +384,7 @@ fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
