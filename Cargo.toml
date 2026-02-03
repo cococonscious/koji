@@ -38,7 +38,6 @@ gix = "0.78.0"
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.12.0"
-rusty-hook = "^0.11.2"
 
 [target.'cfg(not(windows))'.dev-dependencies]
 rexpect = "0.6.2"
