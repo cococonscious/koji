@@ -34,9 +34,6 @@ config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
 gix = "0.75.0"
 
-[features]
-vendored-openssl = []
-
 [dev-dependencies]
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
