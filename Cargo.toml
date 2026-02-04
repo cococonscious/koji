@@ -32,7 +32,7 @@ inquire = "0.9"
 clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
-gix = "0.75.0"
+gix = "0.78.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
