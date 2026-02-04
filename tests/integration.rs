@@ -1,11 +1,13 @@
-use gix::bstr::ByteSlice;
 use gix::Repository;
+use gix::{bstr::ByteSlice, config::File};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
     session::{spawn_command, PtySession},
 };
-use std::{error::Error, fs, path::PathBuf, process::Command};
+use std::fs;
+use std::path::Path;
+use std::{error::Error, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
 fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
@@ -15,27 +17,20 @@ fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
     Ok(temp_dir)
 }
 
-fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
+fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn std::error::Error>> {
     let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
     let temp_dir = tempfile::tempdir()?;
 
-    // Use git command to initialize repo with proper setup
-    Command::new("git")
-        .args(&["init", "-b", "main"])
-        .current_dir(temp_dir.path())
-        .output()?;
+    // Should default to main
+    let repo = gix::init(temp_dir.path())?;
 
-    Command::new("git")
-        .args(&["config", "user.name", "test"])
-        .current_dir(temp_dir.path())
-        .output()?;
+    let config_path = temp_dir.path().join(".git/config");
+    let mut config = File::from_path_no_includes(config_path.clone(), gix::config::Source::Local)?;
 
-    Command::new("git")
-        .args(&["config", "user.email", "test@example.org"])
-        .current_dir(temp_dir.path())
-        .output()?;
+    config.set_raw_value(&"user.name", "test")?;
+    config.set_raw_value(&"user.email", "test@example.org")?;
 
-    let repo = gix::open(temp_dir.path())?;
+    fs::write(&config_path, config.to_string())?;
 
     Ok((bin_path, temp_dir, repo))
 }
