@@ -1,13 +1,10 @@
-use gix::Repository;
-use gix::{bstr::ByteSlice, config::File};
+use git2::{Commit, IndexAddOption, Oid, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
     session::{spawn_command, PtySession},
 };
-use std::fs;
-use std::path::Path;
-use std::{error::Error, path::PathBuf, process::Command};
+use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
 fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
@@ -17,47 +14,34 @@ fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
     Ok(temp_dir)
 }
 
-fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn std::error::Error>> {
+fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
     let temp_dir = tempfile::tempdir()?;
+    let mut init_options = RepositoryInitOptions::new();
+    init_options.initial_head("main");
+    let repo = Repository::init_opts(&temp_dir, &init_options)?;
 
-    // Should default to main
-    let repo = gix::init(temp_dir.path())?;
-
-    let config_path = temp_dir.path().join(".git/config");
-    let mut config = File::from_path_no_includes(config_path.clone(), gix::config::Source::Local)?;
-
-    config.set_raw_value(&"user.name", "test")?;
-    config.set_raw_value(&"user.email", "test@example.org")?;
-
-    fs::write(&config_path, config.to_string())?;
+    let mut gitconfig = repo.config()?;
+    gitconfig.set_str("user.name", "test")?;
+    gitconfig.set_str("user.email", "test@example.org")?;
 
     Ok((bin_path, temp_dir, repo))
 }
 
-fn get_last_commit(repo: &Repository) -> Result<gix::Commit<'_>, Box<dyn Error>> {
-    let head_id = repo.head_id()?;
-    let commit = repo.find_commit(head_id)?;
-    Ok(commit)
+fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
+    let mut walk = repo.revwalk()?;
+    walk.push_head()?;
+    let oid = walk.next().expect("cannot get commit in revwalk")?;
+
+    repo.find_commit(oid)
 }
 
-fn do_initial_commit(
-    temp_dir: &std::path::Path,
-    message: &'static str,
-) -> Result<(), Box<dyn Error>> {
-    Command::new("git")
-        .args(&["commit", "-m", message])
-        .current_dir(temp_dir)
-        .output()?;
-    Ok(())
-}
+fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<Oid, git2::Error> {
+    let signature = repo.signature()?;
+    let oid = repo.index()?.write_tree()?;
+    let tree = repo.find_tree(oid)?;
 
-fn git_add(temp_dir: &std::path::Path, pattern: &str) -> Result<(), Box<dyn Error>> {
-    Command::new("git")
-        .args(&["add", pattern])
-        .current_dir(temp_dir)
-        .output()?;
-    Ok(())
+    repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -114,12 +98,15 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("README.md"), "foo")?;
-    git_add(temp_dir.path(), ".")?;
-    do_initial_commit(temp_dir.path(), "docs(readme): initial draft")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    do_initial_commit(&repo, "docs(readme): initial draft")?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
     // TODO properly test "-a"
-    git_add(temp_dir.path(), ".")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -164,13 +151,12 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     }
 
     let commit = get_last_commit(&repo)?;
-    let message = commit.message()?;
     assert_eq!(
-        message.summary().to_str().ok(),
+        commit.summary(),
         Some("feat(config)!: refactor config pairs")
     );
     assert_eq!(
-        message.body.as_ref().and_then(|b| b.to_str().ok()),
+        commit.body(),
         Some("Removed and added a config pair each\nNecessary for future compatibility.\n\ncloses #1\nBREAKING CHANGE: Something can't be configured anymore")
     );
 
@@ -182,11 +168,13 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_hook_correct() -> Result<(), Box<dyn Error>> {
-    let (bin_path, temp_dir, _repo) = setup_test_dir()?;
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
-    git_add(temp_dir.path(), "*")?;
+    repo.index()?
+        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
@@ -240,11 +228,13 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
-    let (bin_path, temp_dir, _repo) = setup_test_dir()?;
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
-    git_add(temp_dir.path(), "*")?;
+    repo.index()?
+        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
@@ -305,7 +295,9 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("Cargo.toml"), "bar")?;
-    git_add(temp_dir.path(), ".")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -347,15 +339,8 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     }
 
     let commit = get_last_commit(&repo)?;
-    let message = commit.message()?;
-    assert_eq!(
-        message.summary().to_str().ok(),
-        Some("docs(cargo)!: rename project")
-    );
-    assert_eq!(
-        message.body.as_ref().and_then(|b| b.to_str().ok()),
-        Some("Renamed the project to a new name.")
-    );
+    assert_eq!(commit.summary(), Some("docs(cargo)!: rename project"));
+    assert_eq!(commit.body(), Some("Renamed the project to a new name."));
 
     temp_dir.close()?;
     config_temp_dir.close()?;
@@ -501,7 +486,7 @@ fn test_completion_scripts_success() -> Result<(), Box<dyn Error>> {
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_xdg_config() -> Result<(), Box<dyn Error>> {
-    let (bin_path, temp_dir, _repo) = setup_test_dir()?;
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
     let xdg_cfg_home = tempfile::tempdir()?;
@@ -512,7 +497,9 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     )?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
-    git_add(temp_dir.path(), ".")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
