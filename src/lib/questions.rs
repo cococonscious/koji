@@ -1,7 +1,7 @@
 use crate::config::{CommitType, Config};
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
-use git2::Repository;
+use gix::bstr::ByteSlice;
 use indexmap::IndexMap;
 use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
 use inquire::{
@@ -91,25 +91,32 @@ struct ScopeAutocompleter {
 
 impl ScopeAutocompleter {
     fn get_existing_scopes(&self) -> Result<Vec<String>> {
-        let repo =
-            Repository::discover(&self.config.workdir).context("could not find git repository")?;
+        let repo = gix::discover(&self.config.workdir).context("could not find git repository")?;
 
-        let mut walk = repo.revwalk()?;
+        let head_id = repo.head_id().context("could not get HEAD")?;
 
-        walk.push_head()?;
-        walk.set_sorting(git2::Sort::TIME)?;
+        let walk =
+            repo.rev_walk([head_id.detach()])
+                .sorting(gix::revision::walk::Sorting::ByCommitTime(
+                    gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
+                ));
 
         let mut scopes: Vec<String> = Vec::new();
 
-        for id in walk {
-            if let Some(summary) = repo.find_commit(id?)?.summary() {
-                // We want to throw away any error from `parse_summary` since an
-                // invalid commit message should just be ignored
-                if let Ok(parsed) = parse_summary(summary) {
-                    if let Some(scope) = parsed.scope {
-                        if !scopes.contains(&scope) {
-                            scopes.push(scope);
-                        }
+        for info in walk.all()? {
+            let info = info?;
+
+            let commit = repo.find_commit(info.id)?;
+
+            let message = commit.message()?;
+
+            let summary = message.summary();
+
+            // Parse the summary - ignore errors for invalid commit messages
+            if let Ok(parsed) = parse_summary(summary.to_str()?) {
+                if let Some(scope) = parsed.scope {
+                    if !scopes.contains(&scope) {
+                        scopes.push(scope);
                     }
                 }
             }
