@@ -90,13 +90,11 @@ pub struct ScopeAutocompleter {
 }
 
 impl ScopeAutocompleter {
-    pub fn get_existing_scopes(&self) -> Result<Vec<String>> {
+    fn get_existing_scopes(&self) -> Result<Vec<String>> {
         let repo = gix::discover(&self.config.workdir).context("could not find git repository")?;
 
-        // Get HEAD commit as starting point
         let head_id = repo.head_id().context("could not get HEAD")?;
 
-        // Create a revision walk starting from HEAD
         let walk =
             repo.rev_walk([head_id.detach()])
                 .sorting(gix::revision::walk::Sorting::ByCommitTime(
@@ -105,17 +103,13 @@ impl ScopeAutocompleter {
 
         let mut scopes: Vec<String> = Vec::new();
 
-        // Iterate through commits
         for info in walk.all()? {
             let info = info?;
 
-            // Get the commit object
             let commit = repo.find_commit(info.id)?;
 
-            // Get the commit message
             let message = commit.message()?;
 
-            // Get the summary
             let summary = message.summary();
 
             // Parse the summary - ignore errors for invalid commit messages
