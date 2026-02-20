@@ -89,3 +89,13 @@ jobs:
       - run: rustup component add rustfmt clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo fmt --all -- --check
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: reviewdog/action-actionlint@v1.71.0
+        with:
+          reporter: github-pr-check
+          fail_level: warning

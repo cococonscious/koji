@@ -1,0 +1,38 @@
+name: cargo-publish
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      tag_ref:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_ref:
+        description: The tag reference (e.g. 'refs/tags/v3.4.0')
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.1
+        with:
+          ref: ${{ inputs.tag_ref }}
+      - uses: actions/cache@v5.0.1
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
