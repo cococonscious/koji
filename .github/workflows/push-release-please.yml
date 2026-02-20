@@ -1,0 +1,41 @@
+name: push-release-please
+
+permissions:
+  pull-requests: write
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4.4.0
+        id: release-please
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-assets:
+    name: Assets for koji/${{ needs.release-please.outputs.tag_name }}
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/call-build-upload.yml
+    secrets: inherit
+    with:
+      package_name: koji
+      tag_ref: refs/tags/${{ needs.release-please.outputs.tag_name }}
+
+  publish-crate:
+    name: Publish to crates.io
+    needs: [release-please, upload-assets]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/call-cargo-publish.yml
+    secrets: inherit
+    with:
+      tag_ref: refs/tags/${{ needs.release-please.outputs.tag_name }}
