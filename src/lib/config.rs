@@ -13,6 +13,7 @@ pub struct Config {
     pub autocomplete: bool,
     pub breaking_changes: bool,
     pub commit_types: IndexMap<String, CommitType>,
+    pub commit_scopes: IndexMap<String, CommitScope>,
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
@@ -26,12 +27,20 @@ pub struct CommitType {
     pub name: String,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct CommitScope {
+    pub name: String,
+    pub description: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct ConfigTOML {
     pub autocomplete: bool,
     pub breaking_changes: bool,
     #[serde(default)]
     commit_types: Vec<CommitType>,
+    #[serde(default)]
+    commit_scopes: Vec<CommitScope>,
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
@@ -101,10 +110,17 @@ impl Config {
             commit_types.insert(commit_type.name.clone(), commit_type.to_owned());
         }
 
+        // Gather up commit scopes
+        let mut commit_scopes = IndexMap::new();
+        for commit_scope in config.commit_scopes.iter() {
+            commit_scopes.insert(commit_scope.name.clone(), commit_scope.to_owned());
+        }
+
         Ok(Config {
             autocomplete: autocomplete.unwrap_or(config.autocomplete),
             breaking_changes: breaking_changes.unwrap_or(config.breaking_changes),
             commit_types,
+            commit_scopes,
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
@@ -283,6 +299,50 @@ mod tests {
             })
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_commit_scopes() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "[[commit_scopes]]\nname=\"app\"\ndescription=\"Application code\"",
+        )?;
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+        assert!(config.commit_scopes.get("app").is_some());
+        assert_eq!(
+            config.commit_scopes.get("app"),
+            Some(&CommitScope {
+                name: "app".into(),
+                description: Some("Application code".into())
+            })
+        );
+        tempdir.close()?;
+        Ok(())
+    }
+    #[test]
+    fn test_commit_scopes_from_config() -> Result<(), Box<dyn Error>> {
+        let tempdir_config = tempfile::tempdir()?;
+        std::fs::create_dir(tempdir_config.path().join("koji"))?;
+        std::fs::write(
+            tempdir_config.path().join("koji").join("config.toml"),
+            "[[commit_scopes]]\nname=\"server\"\ndescription=\"Server code\"\n[[commit_scopes]]\nname=\"shared\"",
+        )?;
+        let tempdir_current = tempfile::tempdir()?;
+        let config = Config::new(Some(ConfigArgs {
+            _user_config_path: Some(tempdir_config.path().to_path_buf()),
+            _current_dir: Some(tempdir_current.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+        assert!(config.commit_scopes.get("server").is_some());
+        assert!(config.commit_scopes.get("shared").is_some());
+        assert_eq!(config.commit_scopes.len(), 2);
+        tempdir_current.close()?;
+        tempdir_config.close()?;
         Ok(())
     }
 }

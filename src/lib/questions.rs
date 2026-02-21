@@ -85,12 +85,12 @@ fn prompt_type(config: &Config) -> Result<String> {
 }
 
 #[derive(Debug, Clone)]
-struct ScopeAutocompleter {
-    config: Config,
+pub struct ScopeAutocompleter {
+    pub config: Config,
 }
 
 impl ScopeAutocompleter {
-    fn get_existing_scopes(&self) -> Result<Vec<String>> {
+    pub fn get_existing_scopes(&self) -> Result<Vec<String>> {
         let repo = gix::discover(&self.config.workdir).context("could not find git repository")?;
 
         // Get HEAD commit as starting point
@@ -130,13 +130,28 @@ impl ScopeAutocompleter {
 
         Ok(scopes)
     }
+
+    pub fn get_config_scopes(&self) -> Vec<String> {
+        self.config.commit_scopes.keys().cloned().collect()
+    }
+
+    pub fn get_all_scopes(&self) -> Vec<String> {
+        let mut scopes = self.get_config_scopes();
+        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
+        // Add existing scopes that aren't already in the config scopes
+        for scope in existing_scopes {
+            if !scopes.contains(&scope) {
+                scopes.push(scope);
+            }
+        }
+        scopes
+    }
 }
 
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
-
-        Ok(existing_scopes
+        let all_scopes = self.get_all_scopes();
+        Ok(all_scopes
             .iter()
             .filter(|s| s.contains(input))
             .cloned()
