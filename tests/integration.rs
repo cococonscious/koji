@@ -1,12 +1,15 @@
 use gix::Repository;
 use gix::{bstr::ByteSlice, config::File};
+use indexmap::IndexMap;
+use inquire::autocompletion::Autocomplete;
+use koji::config::{CommitScope, Config};
+use koji::questions::ScopeAutocompleter;
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
     session::{spawn_command, PtySession},
 };
 use std::fs;
-use std::path::Path;
 use std::{error::Error, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
@@ -558,5 +561,84 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     temp_dir.close()?;
     config_temp_dir.close()?;
     xdg_cfg_home.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
+    let tempdir = tempfile::tempdir()?;
+    let workdir = tempdir.path();
+
+    // Init git repo and commit using git2
+    let repo = git2::Repository::init(workdir)?;
+
+    // Create a commit with a scope
+    let mut index = repo.index()?;
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+    let sig = git2::Signature::now("Tester", "test@example.com")?;
+
+    repo.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        "feat(database): initial db schema",
+        &tree,
+        &[],
+    )?;
+
+    // Create another commit with a different scope
+    let head = repo.head()?.peel_to_commit()?;
+    repo.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        "fix(api): fix login endpoint",
+        &tree,
+        &[&head],
+    )?;
+
+    // Setup config with a configured scope
+    let mut commit_scopes = IndexMap::new();
+    commit_scopes.insert(
+        "frontend".into(),
+        CommitScope {
+            name: "frontend".into(),
+            description: Some("Frontend code".into()),
+        },
+    );
+
+    let config = Config {
+        commit_scopes,
+        workdir: workdir.to_path_buf(),
+        autocomplete: true,
+        breaking_changes: false,
+        commit_types: IndexMap::new(),
+        emoji: false,
+        issues: false,
+        sign: false,
+    };
+
+    let mut autocompleter = ScopeAutocompleter { config };
+
+    // Test get_all_scopes
+    let scopes = autocompleter.get_all_scopes();
+
+    assert!(scopes.contains(&"database".to_string()));
+    assert!(scopes.contains(&"api".to_string()));
+    assert!(scopes.contains(&"frontend".to_string()));
+
+    // Test get_suggestions (Autocomplete trait)
+    let suggestions = autocompleter
+        .get_suggestions("data")
+        .expect("Failed to get suggestions");
+    assert!(suggestions.contains(&"database".to_string()));
+    assert!(!suggestions.contains(&"api".to_string()));
+
+    let suggestions = autocompleter
+        .get_suggestions("front")
+        .expect("Failed to get suggestions");
+    assert!(suggestions.contains(&"frontend".to_string()));
+
     Ok(())
 }
