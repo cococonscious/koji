@@ -6,8 +6,8 @@ authors = [
   "Finley Thomalla <finley@thomalla.ch>",
   "Danny Tatom <its.danny@hey.com>",
 ]
-description = "An interactive CLI for creating conventional commits."
 documentation = "https://docs.rs/koji"
+description = "An interactive CLI for creating conventional commits."
 repository = "https://github.com/cococonscious/koji"
 license = "MIT"
 
@@ -35,6 +35,7 @@ xdg = "3.0"
 gix = "0.78.0"
 
 [dev-dependencies]
+git2 = "0.20.4"
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.12.0"
