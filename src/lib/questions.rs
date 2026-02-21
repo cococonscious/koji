@@ -90,7 +90,7 @@ pub struct ScopeAutocompleter {
 }
 
 impl ScopeAutocompleter {
-    fn get_existing_scopes(&self) -> Result<Vec<String>> {
+    pub fn get_existing_scopes(&self) -> Result<Vec<String>> {
         let repo = gix::discover(&self.config.workdir).context("could not find git repository")?;
 
         let head_id = repo.head_id().context("could not get HEAD")?;
