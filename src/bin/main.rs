@@ -8,7 +8,7 @@ use conventional_commit_parser::parse;
 use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
-use koji::questions::create_prompt;
+use koji::questions::{create_prompt, prompt_confirm};
 use koji::status::{check_staging, StagingStatus};
 
 #[derive(Parser, Debug)]
@@ -99,6 +99,13 @@ struct Args {
     all: bool,
 
     #[arg(
+        short = 'y',
+        long,
+        help = "Skip the confirmation prompt and proceed with the commit"
+    )]
+    yes: bool,
+
+    #[arg(
         short = 'C',
         value_name = "PATH",
         help = "Run as if koji was started in <path>"
@@ -127,6 +134,7 @@ fn main() -> Result<()> {
         issues,
         sign,
         all,
+        yes,
         current_workdir,
     } = Args::parse();
 
@@ -199,14 +207,38 @@ fn main() -> Result<()> {
         summary,
     } = get_extracted_answers(answers, config.emoji, &config.commit_types)?;
 
+    // Generate the commit message
+    let message = generate_commit_msg(
+        commit_type.clone(),
+        scope.clone(),
+        summary.clone(),
+        body.clone(),
+        is_breaking_change,
+    )?;
+
+    // Print the commit message preview
+    if stdout {
+        println!("{message}");
+    } else {
+        eprintln!("\n{message}\n");
+    }
+
+    // --stdout just prints the message without committing
+    if stdout {
+        return Ok(());
+    }
+
+    // Prompt for confirmation unless --yes is set
+    if !yes {
+        if !prompt_confirm()? {
+            eprintln!("Commit aborted.");
+            return Ok(());
+        }
+    }
+
     // Do the thing!
     if hook {
         write_commit_msg(&repo, commit_type, scope, summary, body, is_breaking_change)?;
-    } else if stdout {
-        println!(
-            "{}",
-            generate_commit_msg(commit_type, scope, summary, body, is_breaking_change)?
-        );
     } else {
         let options = CommitOptions {
             commit_type: commit_type.as_str(),
