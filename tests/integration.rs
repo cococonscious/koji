@@ -366,40 +366,17 @@ fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-#[cfg(not(target_os = "windows"))]
 fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
     let mut cmd = Command::new(bin_path);
     cmd.arg("-C").arg(temp_dir.path());
 
-    let mut process = spawn_command(cmd, Some(5000))?;
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
 
-    process.expect_commit_type()?;
-    process.send_line("chore")?;
-    process.flush()?;
-    process.expect_scope()?;
-    process.send_line("")?;
-    process.flush()?;
-    process.expect_summary()?;
-    process.send_line("new eslint config")?;
-    process.flush()?;
-    process.expect_body()?;
-    process.send_line("")?;
-    process.flush()?;
-    process.expect_breaking()?;
-    process.send_line("N")?;
-    process.flush()?;
-    process.expect_issues()?;
-    process.send_line("N")?;
-    process.flush()?;
-    let eof_output = process.exp_eof();
-
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
-
-    assert!(!success);
-    assert!(eof_output?.contains("nothing to commit"));
+    assert!(!cmd_out.status.success());
+    assert!(stderr_out.contains("no files staged for commit"));
 
     temp_dir.close()?;
     Ok(())
@@ -548,5 +525,99 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     temp_dir.close()?;
     config_temp_dir.close()?;
     xdg_cfg_home.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_no_staged_files_error() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+
+    fs::write(temp_dir.path().join("README.md"), "hello")?;
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::default(), None)?;
+    index.write()?;
+    do_initial_commit(&repo, "docs: initial")?;
+
+    // Modify a file but don't stage it
+    fs::write(temp_dir.path().join("README.md"), "changed")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("-C").arg(temp_dir.path());
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!cmd_out.status.success());
+    assert!(
+        stderr_out.contains("no files staged for commit"),
+        "expected 'no files staged for commit' in stderr, got: {stderr_out}"
+    );
+
+    temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_partial_staging_warning() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+
+    fs::write(temp_dir.path().join("a.txt"), "aaa")?;
+    fs::write(temp_dir.path().join("b.txt"), "bbb")?;
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::default(), None)?;
+    index.write()?;
+    do_initial_commit(&repo, "chore: initial")?;
+
+    // Modify both, stage only one
+    fs::write(temp_dir.path().join("a.txt"), "aaa changed")?;
+    fs::write(temp_dir.path().join("b.txt"), "bbb changed")?;
+    let mut index = repo.index()?;
+    index.add_all(["a.txt"].iter(), IndexAddOption::default(), None)?;
+    index.write()?;
+
+    let mut cmd = Command::new(&bin_path);
+    cmd.arg("-C").arg(temp_dir.path());
+
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    // Warning was printed and the process didn't bail with "no files staged"
+    assert!(
+        stderr_out.contains("file(s) staged for commit"),
+        "expected partial staging warning in stderr, got: {stderr_out}"
+    );
+    assert!(
+        stderr_out.contains("unstaged changes not included"),
+        "expected unstaged warning in stderr, got: {stderr_out}"
+    );
+    assert!(!stderr_out.contains("no files staged for commit"));
+
+    temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_all_flag_skips_staging_check() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+
+    fs::write(temp_dir.path().join("README.md"), "hello")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    do_initial_commit(&repo, "docs: initial")?;
+
+    // Modify a file but don't stage it — should still work with --all
+    fs::write(temp_dir.path().join("README.md"), "changed")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.arg("-C").arg(temp_dir.path()).arg("--all");
+
+    // Just check that it doesn't immediately exit with "no files staged"
+    // It will start the prompt, which proves the staging check was skipped
+    let cmd_out = cmd.output()?;
+    let stderr_out = String::from_utf8(cmd_out.stderr)?;
+
+    assert!(!stderr_out.contains("no files staged for commit"));
+
+    temp_dir.close()?;
     Ok(())
 }
