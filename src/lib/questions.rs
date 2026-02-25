@@ -305,6 +305,16 @@ pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     })
 }
 
+/// Prompt the user to confirm the commit
+pub fn prompt_confirm() -> Result<bool> {
+    let answer = Confirm::new("Proceed with this commit?")
+        .with_render_config(get_render_config())
+        .with_default(true)
+        .prompt()?;
+
+    Ok(answer)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config::Config;

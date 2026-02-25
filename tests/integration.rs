@@ -56,6 +56,7 @@ trait ExpectPromps {
     fn expect_breaking_details(&mut self) -> Result<String, rexpect::error::Error>;
     fn expect_issues(&mut self) -> Result<String, rexpect::error::Error>;
     fn expect_issues_details(&mut self) -> Result<String, rexpect::error::Error>;
+    fn expect_confirm(&mut self) -> Result<String, rexpect::error::Error>;
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -91,6 +92,10 @@ impl ExpectPromps for PtySession {
     fn expect_issues_details(&mut self) -> Result<String, rexpect::error::Error> {
         self.exp_string("issue reference:")
     }
+
+    fn expect_confirm(&mut self) -> Result<String, rexpect::error::Error> {
+        self.exp_string("Proceed with this commit?")
+    }
 }
 
 #[test]
@@ -116,6 +121,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
         .arg("-C")
         .arg(temp_dir.path())
         .arg("-a")
+        .arg("-y")
         .arg("--autocomplete=true");
 
     let mut process = spawn_command(cmd, Some(5000))?;
@@ -186,6 +192,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
         .arg("-C")
         .arg(temp_dir.path())
         .arg("--hook")
+        .arg("-y")
         .arg("--autocomplete=true");
 
     let mut process = spawn_command(cmd, Some(5000))?;
@@ -308,6 +315,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
         .arg("-C")
         .arg(temp_dir.path())
         .arg("-a")
+        .arg("-y")
         .arg("--autocomplete=true");
 
     let mut process = spawn_command(cmd, Some(5000))?;
@@ -375,7 +383,7 @@ fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
     let mut cmd = Command::new(bin_path);
-    cmd.arg("-C").arg(temp_dir.path());
+    cmd.arg("-C").arg(temp_dir.path()).arg("-y");
 
     let cmd_out = cmd.output()?;
     let stderr_out = String::from_utf8(cmd_out.stderr)?;
@@ -530,6 +538,7 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     temp_dir.close()?;
     config_temp_dir.close()?;
     xdg_cfg_home.close()?;
+
     Ok(())
 }
 
@@ -559,6 +568,68 @@ fn test_no_staged_files_error() -> Result<(), Box<dyn Error>> {
     );
 
     temp_dir.close()?;
+
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_confirmation_accept() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(temp_dir.path().join("README.md"), "foo")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("-a");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("fix")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("patch a bug")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    // Expect the commit message preview and confirmation prompt
+    process.exp_string("fix: patch a bug")?;
+    process.expect_confirm()?;
+    process.send_line("Y")?;
+    process.flush()?;
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
+    }
+
+    let commit = get_last_commit(&repo)?;
+    assert_eq!(commit.summary(), Some("fix: patch a bug"));
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+
     Ok(())
 }
 
@@ -598,6 +669,7 @@ fn test_partial_staging_warning() -> Result<(), Box<dyn Error>> {
     assert!(!stderr_out.contains("no files staged for commit"));
 
     temp_dir.close()?;
+
     Ok(())
 }
 
@@ -623,5 +695,73 @@ fn test_all_flag_skips_staging_check() -> Result<(), Box<dyn Error>> {
     assert!(!stderr_out.contains("no files staged for commit"));
 
     temp_dir.close()?;
+
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_confirmation_decline() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(temp_dir.path().join("README.md"), "foo")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    do_initial_commit(&repo, "docs(readme): initial draft")?;
+
+    fs::write(temp_dir.path().join("config.json"), "bar")?;
+    repo.index()?
+        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    repo.index()?.write()?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("-a");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("fix")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("patch a bug")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    // Expect the commit message preview and decline the confirmation
+    process.exp_string("fix: patch a bug")?;
+    process.expect_confirm()?;
+    process.send_line("N")?;
+    process.flush()?;
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
+    }
+
+    // Verify the last commit is still the initial one (no new commit was made)
+    let commit = get_last_commit(&repo)?;
+    assert_eq!(commit.summary(), Some("docs(readme): initial draft"));
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+
     Ok(())
 }
