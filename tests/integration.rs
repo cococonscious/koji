@@ -131,6 +131,7 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     process.expect_body()?;
     process
         .send_line("Removed and added a config pair each\\nNecessary for future compatibility.")?;
+    process.flush()?;
     process.expect_breaking()?;
     process.send_line("Y")?;
     process.flush()?;
@@ -321,6 +322,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     process.expect_body()?;
     process.send_line("Renamed the project to a new name.")?;
+    process.flush()?;
     process.expect_breaking()?;
     process.send_line("Y")?;
     process.flush()?;
