@@ -100,8 +100,9 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("README.md"), "foo")?;
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::default(), None)?;
+    index.write()?;
     do_initial_commit(&repo, "docs(readme): initial draft")?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
@@ -606,8 +607,9 @@ fn test_all_flag_skips_staging_check() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
     fs::write(temp_dir.path().join("README.md"), "hello")?;
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::default(), None)?;
+    index.write()?;
     do_initial_commit(&repo, "docs: initial")?;
 
     // Modify a file but don't stage it
