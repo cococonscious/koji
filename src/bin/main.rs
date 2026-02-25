@@ -9,6 +9,7 @@ use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
 use koji::questions::create_prompt;
+use koji::status::{check_staging, StagingStatus};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -154,10 +155,24 @@ fn main() -> Result<()> {
         Err(_) => "".to_string(),
     };
 
-    // If the existing message is already in the form of a conventional commit,
-    // just go ahead and return early
     if hook && parse(&commit_message).is_ok() {
         return Ok(());
+    }
+
+    // --hook and --stdout don't create commits; --all stages tracked files automatically
+    if !hook && !stdout && !all {
+        match check_staging(&repo)? {
+            StagingStatus::Empty => {
+                anyhow::bail!("no files staged for commit");
+            }
+            StagingStatus::Partial { staged, unstaged } => {
+                eprintln!(
+                    "Warning: {staged} file(s) staged for commit, \
+                     {unstaged} file(s) with unstaged changes not included\n"
+                );
+            }
+            StagingStatus::Ready { .. } => {}
+        }
     }
 
     // Load config
