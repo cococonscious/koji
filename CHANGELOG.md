@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [3.4.0](https://github.com/cococonscious/koji/compare/v3.3.1...v3.4.0) (2026-02-25)
+
+
+### Features
+
+* confirmation prompt ([#181](https://github.com/cococonscious/koji/issues/181)) ([d7dc724](https://github.com/cococonscious/koji/commit/d7dc724dc7e89cf71ac47c41312a4aae9b095616))
+* replace git2 with gix ([#174](https://github.com/cococonscious/koji/issues/174)) ([8679795](https://github.com/cococonscious/koji/commit/8679795d741c38ae9a0526bd0b22473916e38e9e))
+* staging area warn and error ([#182](https://github.com/cococonscious/koji/issues/182)) ([c449b04](https://github.com/cococonscious/koji/commit/c449b04f208612617b4edab6056395fb97a1b8a9)), closes [#126](https://github.com/cococonscious/koji/issues/126)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#169](https://github.com/cococonscious/koji/issues/169)) ([8da82c4](https://github.com/cococonscious/koji/commit/8da82c4ed5c9a646bfb321c3041c19d3db8e0cd5))
+* **deps:** update rust crate gix to 0.80.0 ([#180](https://github.com/cococonscious/koji/issues/180)) ([aa09507](https://github.com/cococonscious/koji/commit/aa0950705ef6354b27df747a06f86f0ae0b67433))
+* **deps:** update rust crate inquire to v0.9.4 ([#171](https://github.com/cococonscious/koji/issues/171)) ([fbdb9eb](https://github.com/cococonscious/koji/commit/fbdb9ebad04969c013fbca44d293bbcfc17d8100))
+
 ## [3.3.1](https://github.com/cococonscious/koji/compare/v3.3.0...v3.3.1) - 2025-11-30
 
 ### Fixed
