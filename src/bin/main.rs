@@ -229,11 +229,9 @@ fn main() -> Result<()> {
     }
 
     // Prompt for confirmation unless --yes is set
-    if !yes {
-        if !prompt_confirm()? {
-            eprintln!("Commit aborted.");
-            return Ok(());
-        }
+    if !yes && !prompt_confirm()? {
+        eprintln!("Commit aborted.");
+        return Ok(());
     }
 
     // Do the thing!
