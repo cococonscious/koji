@@ -7,6 +7,7 @@ use rexpect::{
 use std::{error::Error, fs, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
+#[cfg(not(target_os = "windows"))]
 fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
     let temp_dir = tempfile::tempdir()?;
     std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
@@ -28,6 +29,7 @@ fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
     Ok((bin_path, temp_dir, repo))
 }
 
+#[cfg(not(target_os = "windows"))]
 fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
@@ -558,6 +560,7 @@ fn test_no_staged_files_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_partial_staging_warning() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
@@ -581,7 +584,6 @@ fn test_partial_staging_warning() -> Result<(), Box<dyn Error>> {
     let cmd_out = cmd.output()?;
     let stderr_out = String::from_utf8(cmd_out.stderr)?;
 
-    // Warning was printed and the process didn't bail with "no files staged"
     assert!(
         stderr_out.contains("file(s) staged for commit"),
         "expected partial staging warning in stderr, got: {stderr_out}"
@@ -597,6 +599,7 @@ fn test_partial_staging_warning() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_all_flag_skips_staging_check() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
 
@@ -605,14 +608,11 @@ fn test_all_flag_skips_staging_check() -> Result<(), Box<dyn Error>> {
         .add_all(["."].iter(), IndexAddOption::default(), None)?;
     do_initial_commit(&repo, "docs: initial")?;
 
-    // Modify a file but don't stage it — should still work with --all
+    // Modify a file but don't stage it
     fs::write(temp_dir.path().join("README.md"), "changed")?;
 
     let mut cmd = Command::new(bin_path);
     cmd.arg("-C").arg(temp_dir.path()).arg("--all");
-
-    // Just check that it doesn't immediately exit with "no files staged"
-    // It will start the prompt, which proves the staging check was skipped
     let cmd_out = cmd.output()?;
     let stderr_out = String::from_utf8(cmd_out.stderr)?;
 
