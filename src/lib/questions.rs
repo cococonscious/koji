@@ -90,7 +90,7 @@ pub struct ScopeAutocompleter {
 }
 
 impl ScopeAutocompleter {
-    pub fn get_existing_scopes(&self) -> Result<Vec<String>> {
+    fn get_existing_scopes(&self) -> Result<Vec<String>> {
         let repo = gix::discover(&self.config.workdir).context("could not find git repository")?;
 
         let head_id = repo.head_id().context("could not get HEAD")?;
@@ -163,6 +163,21 @@ impl Autocomplete for ScopeAutocompleter {
 }
 
 fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    if config.force_scope && !config.commit_scopes.is_empty() {
+        let scope_values: Vec<String> = config.commit_scopes.keys().cloned().collect();
+
+        let prompt = Select::new("What's the scope of this change?", scope_values)
+            .with_render_config(get_render_config());
+
+        let result = if config.allow_empty_scope {
+            prompt.prompt_skippable()?
+        } else {
+            Some(prompt.prompt()?)
+        };
+
+        return Ok(result);
+    }
+
     let mut scope_autocompleter = ScopeAutocompleter {
         config: config.clone(),
     };
@@ -186,6 +201,16 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
 
     if config.autocomplete {
         selected_scope = selected_scope.with_autocomplete(scope_autocompleter);
+    }
+
+    if !config.allow_empty_scope {
+        selected_scope = selected_scope.with_validator(|input: &str| {
+            if input.trim().is_empty() {
+                Ok(Validation::Invalid("A scope is required".into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        });
     }
 
     if let Some(scope) = selected_scope.prompt_skippable()? {
@@ -318,6 +343,16 @@ pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
         is_breaking_change: breaking,
         breaking_change_footer: breaking_footer,
     })
+}
+
+/// Prompt the user to confirm the commit
+pub fn prompt_confirm() -> Result<bool> {
+    let answer = Confirm::new("Proceed with this commit?")
+        .with_render_config(get_render_config())
+        .with_default(true)
+        .prompt()?;
+
+    Ok(answer)
 }
 
 #[cfg(test)]

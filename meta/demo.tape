@@ -66,6 +66,13 @@ Sleep 500ms
 Enter
 Sleep 1s
 
+# Confim
+
+Type "y"
+Sleep 500ms
+Enter
+Sleep 1s
+
 # Show last commit
 
 Type "git --no-pager show --stat"

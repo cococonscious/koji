@@ -1,6 +1,6 @@
 [package]
 name = "koji"
-version = "3.3.1"
+version = "3.4.0"
 edition = "2021"
 authors = [
   "Finley Thomalla <finley@thomalla.ch>",
@@ -32,7 +32,7 @@ inquire = "0.9"
 clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
-gix = "0.78.0"
+gix = "0.80.0"
 
 [dev-dependencies]
 git2 = "0.20.4"

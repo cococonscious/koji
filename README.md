@@ -27,6 +27,30 @@ for automatic versioning, changelog generation, and more
 
 ## Installation
 
+### Homebrew
+
+> Community-maintained
+
+```bash
+brew install koji
+```
+
+### Arch Linux (AUR)
+
+> Community-maintained
+
+```bash
+yay -S git-koji-bin
+```
+
+### Nix
+
+> Community-maintained
+
+```bash
+nix-shell -p koji
+```
+
 ### webi
 
 ```bash

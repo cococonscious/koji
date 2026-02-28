@@ -17,6 +17,8 @@ pub struct Config {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub force_scope: bool,
+    pub allow_empty_scope: bool,
     pub workdir: PathBuf,
 }
 
@@ -44,6 +46,8 @@ struct ConfigTOML {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub force_scope: bool,
+    pub allow_empty_scope: bool,
 }
 
 #[derive(Default)]
@@ -54,6 +58,8 @@ pub struct ConfigArgs {
     pub emoji: Option<bool>,
     pub issues: Option<bool>,
     pub sign: Option<bool>,
+    pub force_scope: Option<bool>,
+    pub allow_empty_scope: Option<bool>,
     pub _user_config_path: Option<PathBuf>,
     pub _current_dir: Option<PathBuf>,
 }
@@ -68,6 +74,8 @@ impl Config {
             emoji,
             issues,
             sign,
+            force_scope,
+            allow_empty_scope,
             _user_config_path,
             _current_dir,
         } = args.unwrap_or_default();
@@ -124,6 +132,8 @@ impl Config {
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
+            force_scope: force_scope.unwrap_or(config.force_scope),
+            allow_empty_scope: allow_empty_scope.unwrap_or(config.allow_empty_scope),
             workdir,
         })
     }

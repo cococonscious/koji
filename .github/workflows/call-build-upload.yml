@@ -63,10 +63,10 @@ jobs:
             os: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6.0.1
+      - uses: actions/checkout@v6.0.2
         with:
           ref: ${{ inputs.tag_ref }}
-      - uses: actions/cache@v5.0.1
+      - uses: actions/cache@v5.0.3
         with:
           path: |
             ~/.cargo/bin/
@@ -87,5 +87,4 @@ jobs:
           target: ${{ matrix.target }}
           tar: all
           zip: windows
-          features: 'vendored-openssl'
           token: ${{ secrets.GITHUB_TOKEN }}
