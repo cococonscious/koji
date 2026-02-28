@@ -1,5 +1,4 @@
 use git2::{IndexAddOption, Repository};
-use gix::bstr::ByteSlice;
 use indexmap::IndexMap;
 use inquire::autocompletion::Autocomplete;
 use koji::config::{CommitScope, Config};
@@ -43,10 +42,7 @@ fn get_last_commit(repo: &Repository) -> Result<git2::Commit<'_>, git2::Error> {
     repo.find_commit(oid)
 }
 
-fn do_initial_commit(
-    repo: &Repository,
-    message: &'static str,
-) -> Result<(), Box<dyn Error>> {
+fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<(), Box<dyn Error>> {
     let mut index = repo.index()?;
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
@@ -61,7 +57,6 @@ fn git_add(repo: &Repository, pattern: &str) -> Result<(), Box<dyn Error>> {
     index.write()?;
     Ok(())
 }
-
 
 #[cfg(not(target_os = "windows"))]
 trait ExpectPromps {
@@ -128,7 +123,6 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     fs::write(temp_dir.path().join("config.json"), "bar")?;
     // TODO properly test "-a"
     git_add(&repo, ".")?;
-
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -318,7 +312,6 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     fs::write(temp_dir.path().join("Cargo.toml"), "bar")?;
     git_add(&repo, ".")?;
 
-
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
         .arg("-C")
@@ -361,14 +354,8 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     }
 
     let commit = get_last_commit(&repo)?;
-    assert_eq!(
-        commit.summary(),
-        Some("docs(cargo)!: rename project")
-    );
-    assert_eq!(
-        commit.body(),
-        Some("Renamed the project to a new name.")
-    );
+    assert_eq!(commit.summary(), Some("docs(cargo)!: rename project"));
+    assert_eq!(commit.body(), Some("Renamed the project to a new name."));
 
     temp_dir.close()?;
     config_temp_dir.close()?;
@@ -504,7 +491,6 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
     git_add(&repo, ".")?;
-
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -863,52 +849,15 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn test_force_scope() -> Result<(), Box<dyn Error>> {
-    let tempdir = tempfile::tempdir()?;
-    let workdir = tempdir.path();
-
-    // Init git repo
-    let _repo = git2::Repository::init(workdir)?;
-
-    // Setup config with a configured scope and force_scope = true
-    let mut commit_scopes = IndexMap::new();
-    commit_scopes.insert(
-        "app".into(),
-        CommitScope {
-            name: "app".into(),
-            description: Some("App code".into()),
-        },
-    );
-
-    let config = Config {
-        commit_scopes,
-        workdir: workdir.to_path_buf(),
-        autocomplete: true,
-        breaking_changes: false,
-        commit_types: IndexMap::new(),
-        emoji: false,
-        issues: false,
-        sign: false,
-        force_scope: true,
-        allow_empty_scope: true,
-    };
-
-    // We can't easily test the interactive prompt here without rexpect,
-    // but we can test that the logic in ScopeAutocompleter only returns configured scopes
-    // IF we were to use it.
-    // Wait, the logic for force_scope is in prompt_scope, not in ScopeAutocompleter.
-    
-    // Let's add an integration test with rexpect for force_scope
-    Ok(())
-}
-
-#[test]
 #[cfg(not(target_os = "windows"))]
 fn test_force_scope_integration() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
-    fs::write(temp_dir.path().join(".koji.toml"), "force_scope = true\n[[commit_scopes]]\nname = \"app\"")?;
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "force_scope = true\n[[commit_scopes]]\nname = \"app\"",
+    )?;
 
     fs::write(temp_dir.path().join("a.txt"), "foo")?;
     git_add(&repo, ".")?;
@@ -925,9 +874,9 @@ fn test_force_scope_integration() -> Result<(), Box<dyn Error>> {
     process.send_line("feat")?;
     process.flush()?;
     process.expect_scope()?;
-    // In Select mode, "app" should be the first and only option. 
+    // In Select mode, "app" should be the first and only option.
     // Pressing enter should select "app".
-    process.send_line("")?; 
+    process.send_line("")?;
     process.flush()?;
     process.expect_summary()?;
     process.send_line("test force scope")?;
@@ -956,7 +905,10 @@ fn test_require_scope_integration() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
-    fs::write(temp_dir.path().join(".koji.toml"), "allow_empty_scope = false")?;
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "allow_empty_scope = false",
+    )?;
 
     fs::write(temp_dir.path().join("a.txt"), "foo")?;
     git_add(&repo, ".")?;
@@ -974,13 +926,13 @@ fn test_require_scope_integration() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     process.expect_scope()?;
     // Try to skip by sending empty line
-    process.send_line("")?; 
+    process.send_line("")?;
     process.flush()?;
-    
+
     // It should NOT proceed to summary, but show error.
     // Inquire shows error message "A scope is required"
     process.exp_string("A scope is required")?;
-    
+
     // Now provide a scope
     process.send_line("required-scope")?;
     process.flush()?;
@@ -1005,4 +957,3 @@ fn test_require_scope_integration() -> Result<(), Box<dyn Error>> {
     config_temp_dir.close()?;
     Ok(())
 }
-
