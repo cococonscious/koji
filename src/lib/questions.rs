@@ -85,8 +85,8 @@ fn prompt_type(config: &Config) -> Result<String> {
 }
 
 #[derive(Debug, Clone)]
-struct ScopeAutocompleter {
-    config: Config,
+pub struct ScopeAutocompleter {
+    pub config: Config,
 }
 
 impl ScopeAutocompleter {
@@ -124,13 +124,28 @@ impl ScopeAutocompleter {
 
         Ok(scopes)
     }
+
+    pub fn get_config_scopes(&self) -> Vec<String> {
+        self.config.commit_scopes.keys().cloned().collect()
+    }
+
+    pub fn get_all_scopes(&self) -> Vec<String> {
+        let mut scopes = self.get_config_scopes();
+        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
+        // Add existing scopes that aren't already in the config scopes
+        for scope in existing_scopes {
+            if !scopes.contains(&scope) {
+                scopes.push(scope);
+            }
+        }
+        scopes
+    }
 }
 
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
-
-        Ok(existing_scopes
+        let all_scopes = self.get_all_scopes();
+        Ok(all_scopes
             .iter()
             .filter(|s| s.contains(input))
             .cloned()
@@ -148,6 +163,21 @@ impl Autocomplete for ScopeAutocompleter {
 }
 
 fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    if config.force_scope && !config.commit_scopes.is_empty() {
+        let scope_values: Vec<String> = config.commit_scopes.keys().cloned().collect();
+
+        let prompt = Select::new("What's the scope of this change?", scope_values)
+            .with_render_config(get_render_config());
+
+        let result = if config.allow_empty_scope {
+            prompt.prompt_skippable()?
+        } else {
+            Some(prompt.prompt()?)
+        };
+
+        return Ok(result);
+    }
+
     let mut scope_autocompleter = ScopeAutocompleter {
         config: config.clone(),
     };
@@ -171,6 +201,16 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
 
     if config.autocomplete {
         selected_scope = selected_scope.with_autocomplete(scope_autocompleter);
+    }
+
+    if !config.allow_empty_scope {
+        selected_scope = selected_scope.with_validator(|input: &str| {
+            if input.trim().is_empty() {
+                Ok(Validation::Invalid("A scope is required".into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        });
     }
 
     if let Some(scope) = selected_scope.prompt_skippable()? {
