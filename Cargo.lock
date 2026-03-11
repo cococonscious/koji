@@ -2191,6 +2191,7 @@ dependencies = [
  "rexpect",
  "serde",
  "tempfile",
+ "thiserror",
  "xdg",
 ]
 

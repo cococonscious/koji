@@ -3,12 +3,33 @@ use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use gix::bstr::ByteSlice;
 use indexmap::IndexMap;
+use inquire::error::InquireError;
 use inquire::ui::{Attributes, Color, RenderConfig, StyleSheet};
 use inquire::{
     autocompletion::{Autocomplete, Replacement},
     validator::Validation,
     Confirm, CustomUserError, Select, Text,
 };
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+enum PromptError {
+    #[error("{0} cancelled")]
+    Cancelled(&'static str),
+    #[error(transparent)]
+    Inquire(InquireError),
+}
+
+impl PromptError {
+    fn from_inquire(e: InquireError, prompt_name: &'static str) -> Self {
+        match e {
+            InquireError::OperationCanceled | InquireError::OperationInterrupted => {
+                PromptError::Cancelled(prompt_name)
+            }
+            other => PromptError::Inquire(other),
+        }
+    }
+}
 
 fn get_skip_hint() -> &'static str {
     "<esc> or <return> to skip"
@@ -79,14 +100,15 @@ fn prompt_type(config: &Config) -> Result<String> {
     let selected_type = Select::new("What type of change are you committing?", type_values)
         .with_render_config(get_render_config())
         .with_formatter(&|v| transform_commit_type_choice(v.value))
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Commit type selection"))?;
 
     Ok(transform_commit_type_choice(&selected_type))
 }
 
 #[derive(Debug, Clone)]
-struct ScopeAutocompleter {
-    config: Config,
+pub struct ScopeAutocompleter {
+    pub config: Config,
 }
 
 impl ScopeAutocompleter {
@@ -124,13 +146,28 @@ impl ScopeAutocompleter {
 
         Ok(scopes)
     }
+
+    pub fn get_config_scopes(&self) -> Vec<String> {
+        self.config.commit_scopes.keys().cloned().collect()
+    }
+
+    pub fn get_all_scopes(&self) -> Vec<String> {
+        let mut scopes = self.get_config_scopes();
+        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
+        // Add existing scopes that aren't already in the config scopes
+        for scope in existing_scopes {
+            if !scopes.contains(&scope) {
+                scopes.push(scope);
+            }
+        }
+        scopes
+    }
 }
 
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        let existing_scopes = self.get_existing_scopes().unwrap_or_default();
-
-        Ok(existing_scopes
+        let all_scopes = self.get_all_scopes();
+        Ok(all_scopes
             .iter()
             .filter(|s| s.contains(input))
             .cloned()
@@ -148,6 +185,38 @@ impl Autocomplete for ScopeAutocompleter {
 }
 
 fn prompt_scope(config: &Config) -> Result<Option<String>> {
+    if config.force_scope && !config.commit_scopes.is_empty() {
+        let scope_values: Vec<String> = config
+            .commit_scopes
+            .values()
+            .map(|scope| {
+                if let Some(desc) = &scope.description {
+                    format!("{}: {}", scope.name, desc)
+                } else {
+                    scope.name.clone()
+                }
+            })
+            .collect();
+
+        let prompt = Select::new("What's the scope of this change?", scope_values)
+            .with_render_config(get_render_config())
+            .with_formatter(&|v| v.value.split(':').next().unwrap().trim().to_string());
+
+        let result = if config.allow_empty_scope {
+            prompt
+                .prompt_skippable()
+                .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
+        } else {
+            Some(
+                prompt
+                    .prompt()
+                    .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?,
+            )
+        };
+
+        return Ok(result.map(|s| s.split(':').next().unwrap().trim().to_string()));
+    }
+
     let mut scope_autocompleter = ScopeAutocompleter {
         config: config.clone(),
     };
@@ -173,13 +242,22 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
         selected_scope = selected_scope.with_autocomplete(scope_autocompleter);
     }
 
-    if let Some(scope) = selected_scope.prompt_skippable()? {
-        if scope.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(scope))
-    } else {
-        Ok(None)
+    if !config.allow_empty_scope {
+        selected_scope = selected_scope.with_validator(|input: &str| {
+            if input.trim().is_empty() {
+                Ok(Validation::Invalid("A scope is required".into()))
+            } else {
+                Ok(Validation::Valid)
+            }
+        });
+    }
+
+    match selected_scope
+        .prompt_skippable()
+        .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
+    {
+        Some(scope) if scope.is_empty() => Ok(None),
+        scope => Ok(scope),
     }
 }
 
@@ -193,7 +271,8 @@ fn prompt_summary(msg: String) -> Result<String> {
         .with_render_config(get_render_config())
         .with_placeholder(&previous_summary)
         .with_validator(validate_summary)
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Commit summary input"))?;
 
     Ok(summary)
 }
@@ -201,18 +280,15 @@ fn prompt_summary(msg: String) -> Result<String> {
 fn prompt_body() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
-    let summary = Text::new("Provide a longer description of the change:")
+    match Text::new("Provide a longer description of the change:")
         .with_render_config(get_render_config())
         .with_help_message(help_message.as_str())
-        .prompt_skippable()?;
-
-    if let Some(summary) = summary {
-        if summary.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(summary.replace("\\n", "\n")))
-    } else {
-        Ok(None)
+        .prompt_skippable()
+        .map_err(|e| PromptError::from_inquire(e, "Body input"))?
+    {
+        Some(summary) if summary.is_empty() => Ok(None),
+        Some(summary) => Ok(Some(summary.replace("\\n", "\n"))),
+        None => Ok(None),
     }
 }
 
@@ -220,7 +296,8 @@ fn prompt_breaking() -> Result<bool> {
     let answer = Confirm::new("Are there any breaking changes?")
         .with_render_config(get_render_config())
         .with_default(false)
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Breaking changes prompt"))?;
 
     Ok(answer)
 }
@@ -228,18 +305,15 @@ fn prompt_breaking() -> Result<bool> {
 fn prompt_breaking_text() -> Result<Option<String>> {
     let help_message = format!("{}, {}", "Use '\\n' for newlines", get_skip_hint());
 
-    let breaking_text = Text::new("Describe the breaking changes in detail:")
+    match Text::new("Describe the breaking changes in detail:")
         .with_render_config(get_render_config())
         .with_help_message(help_message.as_str())
-        .prompt_skippable()?;
-
-    if let Some(breaking_text) = breaking_text {
-        if breaking_text.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(breaking_text.replace("\\n", "\n")))
-    } else {
-        Ok(None)
+        .prompt_skippable()
+        .map_err(|e| PromptError::from_inquire(e, "Breaking changes description"))?
+    {
+        Some(text) if text.is_empty() => Ok(None),
+        Some(text) => Ok(Some(text.replace("\\n", "\n"))),
+        None => Ok(None),
     }
 }
 
@@ -247,7 +321,8 @@ fn prompt_issues() -> Result<bool> {
     let answer = Confirm::new("Does this change affect any open issues?")
         .with_render_config(get_render_config())
         .with_default(false)
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Issues prompt"))?;
 
     Ok(answer)
 }
@@ -257,7 +332,8 @@ fn prompt_issue_text() -> Result<String> {
         .with_render_config(get_render_config())
         .with_help_message("e.g. \"closes #123\"")
         .with_validator(validate_issue_reference)
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Issue reference input"))?;
 
     Ok(summary)
 }
@@ -310,7 +386,8 @@ pub fn prompt_confirm() -> Result<bool> {
     let answer = Confirm::new("Proceed with this commit?")
         .with_render_config(get_render_config())
         .with_default(true)
-        .prompt()?;
+        .prompt()
+        .map_err(|e| PromptError::from_inquire(e, "Confirmation"))?;
 
     Ok(answer)
 }

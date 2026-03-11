@@ -193,6 +193,7 @@ fn main() -> Result<()> {
         sign,
         _user_config_path: None,
         _current_dir: Some(current_dir.clone()),
+        ..Default::default()
     }))?;
 
     // Get answers from interactive prompt

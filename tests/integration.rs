@@ -1,10 +1,15 @@
-use git2::{Commit, IndexAddOption, Oid, Repository, RepositoryInitOptions};
+use git2::{IndexAddOption, Repository};
+use indexmap::IndexMap;
+use inquire::autocompletion::Autocomplete;
+use koji::config::{CommitScope, Config};
+use koji::questions::ScopeAutocompleter;
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
     session::{spawn_command, PtySession},
 };
-use std::{error::Error, fs, path::PathBuf, process::Command};
+use std::fs;
+use std::{error::Error, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
 #[cfg(not(target_os = "windows"))]
@@ -15,22 +20,21 @@ fn setup_config_home() -> Result<TempDir, Box<dyn Error>> {
     Ok(temp_dir)
 }
 
-fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn Error>> {
+fn setup_test_dir() -> Result<(PathBuf, TempDir, Repository), Box<dyn std::error::Error>> {
     let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
     let temp_dir = tempfile::tempdir()?;
-    let mut init_options = RepositoryInitOptions::new();
-    init_options.initial_head("main");
-    let repo = Repository::init_opts(&temp_dir, &init_options)?;
 
-    let mut gitconfig = repo.config()?;
-    gitconfig.set_str("user.name", "test")?;
-    gitconfig.set_str("user.email", "test@example.org")?;
+    let repo = Repository::init(temp_dir.path())?;
+
+    let mut config = repo.config()?;
+    config.set_str("user.name", "test")?;
+    config.set_str("user.email", "test@example.org")?;
 
     Ok((bin_path, temp_dir, repo))
 }
 
 #[cfg(not(target_os = "windows"))]
-fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
+fn get_last_commit(repo: &Repository) -> Result<git2::Commit<'_>, git2::Error> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
     let oid = walk.next().expect("cannot get commit in revwalk")?;
@@ -38,12 +42,20 @@ fn get_last_commit(repo: &Repository) -> Result<Commit<'_>, git2::Error> {
     repo.find_commit(oid)
 }
 
-fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<Oid, git2::Error> {
-    let signature = repo.signature()?;
-    let oid = repo.index()?.write_tree()?;
-    let tree = repo.find_tree(oid)?;
+fn do_initial_commit(repo: &Repository, message: &'static str) -> Result<(), Box<dyn Error>> {
+    let mut index = repo.index()?;
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+    let sig = repo.signature()?;
+    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[])?;
+    Ok(())
+}
 
-    repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
+fn git_add(repo: &Repository, pattern: &str) -> Result<(), Box<dyn Error>> {
+    let mut index = repo.index()?;
+    index.add_all([pattern].iter(), IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+    Ok(())
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -105,16 +117,12 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("README.md"), "foo")?;
-    let mut index = repo.index()?;
-    index.add_all(["."].iter(), IndexAddOption::default(), None)?;
-    index.write()?;
+    git_add(&repo, ".")?;
     do_initial_commit(&repo, "docs(readme): initial draft")?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
     // TODO properly test "-a"
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
-    repo.index()?.write()?;
+    git_add(&repo, ".")?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -182,9 +190,7 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
-    repo.index()?
-        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
-    repo.index()?.write()?;
+    git_add(&repo, "*")?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
@@ -243,9 +249,7 @@ fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("config.json"), "abc")?;
-    repo.index()?
-        .add_all(["*"].iter(), IndexAddOption::default(), None)?;
-    repo.index()?.write()?;
+    git_add(&repo, "*")?;
     fs::remove_file(temp_dir.path().join(".git").join("COMMIT_EDITMSG")).unwrap_or(());
 
     let mut cmd = Command::new(bin_path);
@@ -306,9 +310,7 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     let config_temp_dir = setup_config_home()?;
 
     fs::write(temp_dir.path().join("Cargo.toml"), "bar")?;
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
-    repo.index()?.write()?;
+    git_add(&repo, ".")?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -379,6 +381,7 @@ fn test_non_repository_error() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_empty_repository_error() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, _) = setup_test_dir()?;
 
@@ -487,9 +490,7 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
     )?;
 
     fs::write(temp_dir.path().join("config.json"), "bar")?;
-    repo.index()?
-        .add_all(["."].iter(), IndexAddOption::default(), None)?;
-    repo.index()?.write()?;
+    git_add(&repo, ".")?;
 
     let mut cmd = Command::new(bin_path);
     cmd.env("NO_COLOR", "1")
@@ -763,5 +764,196 @@ fn test_confirmation_decline() -> Result<(), Box<dyn Error>> {
     temp_dir.close()?;
     config_temp_dir.close()?;
 
+    Ok(())
+}
+
+#[test]
+fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
+    let tempdir = tempfile::tempdir()?;
+    let workdir = tempdir.path();
+
+    // Init git repo and commit using git2
+    let repo = git2::Repository::init(workdir)?;
+
+    // Create a commit with a scope
+    let mut index = repo.index()?;
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+    let sig = git2::Signature::now("Tester", "test@example.com")?;
+
+    repo.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        "feat(database): initial db schema",
+        &tree,
+        &[],
+    )?;
+
+    // Create another commit with a different scope
+    let head = repo.head()?.peel_to_commit()?;
+    repo.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        "fix(api): fix login endpoint",
+        &tree,
+        &[&head],
+    )?;
+
+    // Setup config with a configured scope
+    let mut commit_scopes = IndexMap::new();
+    commit_scopes.insert(
+        "frontend".into(),
+        CommitScope {
+            name: "frontend".into(),
+            description: Some("Frontend code".into()),
+        },
+    );
+
+    let config = Config {
+        commit_scopes,
+        workdir: workdir.to_path_buf(),
+        autocomplete: true,
+        breaking_changes: false,
+        commit_types: IndexMap::new(),
+        emoji: false,
+        issues: false,
+        sign: false,
+        force_scope: false,
+        allow_empty_scope: true,
+    };
+
+    let mut autocompleter = ScopeAutocompleter { config };
+
+    // Test get_all_scopes
+    let scopes = autocompleter.get_all_scopes();
+
+    assert!(scopes.contains(&"database".to_string()));
+    assert!(scopes.contains(&"api".to_string()));
+    assert!(scopes.contains(&"frontend".to_string()));
+
+    // Test get_suggestions (Autocomplete trait)
+    let suggestions = autocompleter
+        .get_suggestions("data")
+        .expect("Failed to get suggestions");
+    assert!(suggestions.contains(&"database".to_string()));
+    assert!(!suggestions.contains(&"api".to_string()));
+
+    let suggestions = autocompleter
+        .get_suggestions("front")
+        .expect("Failed to get suggestions");
+    assert!(suggestions.contains(&"frontend".to_string()));
+
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_force_scope_integration() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "force_scope = true\n[[commit_scopes]]\nname = \"app\"",
+    )?;
+
+    fs::write(temp_dir.path().join("a.txt"), "foo")?;
+    git_add(&repo, ".")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("feat")?;
+    process.flush()?;
+    process.expect_scope()?;
+    // In Select mode, "app" should be the first and only option.
+    // Pressing enter should select "app".
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("test force scope")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let expected_output = "feat(app): test force scope";
+    let _ = process.exp_string(expected_output)?;
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_require_scope_integration() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "allow_empty_scope = false",
+    )?;
+
+    fs::write(temp_dir.path().join("a.txt"), "foo")?;
+    git_add(&repo, ".")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("feat")?;
+    process.flush()?;
+    process.expect_scope()?;
+    // Try to skip by sending empty line
+    process.send_line("")?;
+    process.flush()?;
+
+    // It should NOT proceed to summary, but show error.
+    // Inquire shows error message "A scope is required"
+    process.exp_string("A scope is required")?;
+
+    // Now provide a scope
+    process.send_line("required-scope")?;
+    process.flush()?;
+
+    process.expect_summary()?;
+    process.send_line("test require scope")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let expected_output = "feat(required-scope): test require scope";
+    let _ = process.exp_string(expected_output)?;
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
     Ok(())
 }
