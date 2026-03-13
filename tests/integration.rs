@@ -1,4 +1,6 @@
-use git2::{Commit, IndexAddOption, Oid, Repository, RepositoryInitOptions};
+#[cfg(not(target_os = "windows"))]
+use git2::Commit;
+use git2::{IndexAddOption, Oid, Repository, RepositoryInitOptions};
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
@@ -764,4 +766,375 @@ fn test_confirmation_decline() -> Result<(), Box<dyn Error>> {
     config_temp_dir.close()?;
 
     Ok(())
+}
+
+// ---- Jj integration tests ----
+
+#[cfg(feature = "jj")]
+mod jj_tests {
+    use super::*;
+    use std::path::Path;
+
+    use jj_lib::config::StackedConfig;
+    use jj_lib::ref_name::WorkspaceName;
+    use jj_lib::repo::{ReadonlyRepo, Repo as _, StoreFactories};
+    use jj_lib::settings::UserSettings;
+    use jj_lib::workspace::{default_working_copy_factories, Workspace};
+    use pollster::FutureExt as _;
+    use std::sync::Arc;
+
+    fn jj_settings() -> UserSettings {
+        let config = StackedConfig::with_defaults();
+        UserSettings::from_config(config).expect("could not create jj UserSettings")
+    }
+
+    /// Create a non-colocated jj repo in the given directory.
+    fn create_jj_repo(dir: &Path) {
+        let settings = jj_settings();
+        Workspace::init_internal_git(&settings, dir)
+            .block_on()
+            .expect("failed to init non-colocated jj repo");
+    }
+
+    /// Create a colocated jj repo (both `.jj/` and `.git/` exist).
+    fn create_colocated_jj_repo(dir: &Path) {
+        let settings = jj_settings();
+        Workspace::init_colocated_git(&settings, dir)
+            .block_on()
+            .expect("failed to init colocated jj repo");
+    }
+
+    fn jj_load_repo(workspace_root: &Path) -> Arc<ReadonlyRepo> {
+        let settings = jj_settings();
+        let store_factories = StoreFactories::default();
+        let wc_factories = default_working_copy_factories();
+        let workspace = Workspace::load(&settings, workspace_root, &store_factories, &wc_factories)
+            .expect("could not load jj workspace");
+        workspace
+            .repo_loader()
+            .load_at_head()
+            .block_on()
+            .expect("could not load jj repo at head")
+    }
+
+    fn jj_wc_commit(repo: &Arc<ReadonlyRepo>) -> jj_lib::commit::Commit {
+        let wc_commit_id = repo
+            .view()
+            .get_wc_commit_id(WorkspaceName::DEFAULT)
+            .expect("no working copy commit found");
+        repo.store()
+            .get_commit(wc_commit_id)
+            .expect("could not get working copy commit")
+    }
+
+    /// Get the current `@` commit description via jj-lib.
+    fn jj_get_description(dir: &Path) -> String {
+        let repo = jj_load_repo(dir);
+        let commit = jj_wc_commit(&repo);
+        commit.description().trim().to_string()
+    }
+
+    /// Describe the current `@` commit (for pre-population tests).
+    fn jj_describe(dir: &Path, message: &str) {
+        let repo = jj_load_repo(dir);
+        let commit = jj_wc_commit(&repo);
+        let mut tx = repo.start_transaction();
+        tx.repo_mut()
+            .rewrite_commit(&commit)
+            .set_description(message)
+            .write()
+            .block_on()
+            .expect("could not write jj commit description");
+        tx.repo_mut()
+            .rebase_descendants()
+            .block_on()
+            .expect("could not rebase descendants");
+        tx.commit("test: describe change")
+            .block_on()
+            .expect("could not commit jj transaction");
+    }
+
+    // ---- Non-interactive tests ----
+
+    #[test]
+    fn test_jj_repo_detection() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+
+        create_jj_repo(temp_dir.path());
+
+        let output = Command::new(&bin_path)
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("--hook")
+            .output()?;
+
+        let stderr = String::from_utf8(output.stderr)?;
+        assert!(!output.status.success());
+        assert!(
+            stderr.contains("--hook mode is not supported with jj"),
+            "expected jj hook rejection, got: {stderr}"
+        );
+
+        temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_colocated_prefers_jj() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+
+        create_colocated_jj_repo(temp_dir.path());
+
+        assert!(temp_dir.path().join(".jj").is_dir());
+        assert!(temp_dir.path().join(".git").is_dir());
+
+        let output = Command::new(&bin_path)
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("--hook")
+            .output()?;
+
+        let stderr = String::from_utf8(output.stderr)?;
+        assert!(!output.status.success());
+        assert!(
+            stderr.contains("--hook mode is not supported with jj"),
+            "expected jj backend chosen for colocated repo, got: {stderr}"
+        );
+
+        temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_colocated_config_override_to_git() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+        let config_temp_dir = setup_config_home()?;
+
+        create_colocated_jj_repo(temp_dir.path());
+
+        fs::write(temp_dir.path().join(".koji.toml"), "vcs = \"git\"")?;
+
+        // Stage a file so the git backend doesn't complain about empty staging
+        fs::write(temp_dir.path().join("test.txt"), "hello")?;
+        let repo = Repository::open(temp_dir.path())?;
+        let mut index = repo.index()?;
+        index.add_all(["."].iter(), IndexAddOption::default(), None)?;
+        index.write()?;
+
+        // --hook mode should work (not rejected) because git backend is forced.
+        let output = Command::new(&bin_path)
+            .env("NO_COLOR", "1")
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("--hook")
+            .output()?;
+
+        let stderr = String::from_utf8(output.stderr)?;
+        assert!(
+            !stderr.contains("--hook mode is not supported with jj"),
+            "expected git backend due to config override, but jj was chosen: {stderr}"
+        );
+
+        temp_dir.close()?;
+        config_temp_dir.close()?;
+        Ok(())
+    }
+
+    // ---- Interactive tests (require PTY, not supported on Windows) ----
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_jj_describe() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+        let config_temp_dir = setup_config_home()?;
+
+        create_jj_repo(temp_dir.path());
+
+        fs::write(temp_dir.path().join("README.md"), "hello")?;
+
+        let mut cmd = Command::new(&bin_path);
+        cmd.env("NO_COLOR", "1")
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("-y")
+            .arg("--autocomplete=true");
+
+        let mut process = spawn_command(cmd, Some(10000))?;
+
+        process.expect_commit_type()?;
+        process.send_line("feat")?;
+        process.flush()?;
+        process.expect_scope()?;
+        process.send_line("core")?;
+        process.flush()?;
+        process.expect_summary()?;
+        process.send_line("add readme")?;
+        process.flush()?;
+        process.expect_body()?;
+        process.send_line("")?;
+        process.flush()?;
+        process.expect_breaking()?;
+        process.send_line("N")?;
+        process.flush()?;
+        process.expect_issues()?;
+        process.send_line("N")?;
+        process.flush()?;
+        let eof_output = process.exp_eof();
+
+        let exitcode = process.process.wait()?;
+        let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+        if !success {
+            panic!("Command exited non-zero, end of output: {eof_output:#?}");
+        }
+
+        let description = jj_get_description(temp_dir.path());
+        assert_eq!(
+            description, "feat(core): add readme",
+            "jj describe did not set the expected commit message"
+        );
+
+        temp_dir.close()?;
+        config_temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_jj_stdout_mode() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+        let config_temp_dir = setup_config_home()?;
+
+        create_jj_repo(temp_dir.path());
+        fs::write(temp_dir.path().join("test.txt"), "content")?;
+
+        let mut cmd = Command::new(&bin_path);
+        cmd.env("NO_COLOR", "1")
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("--stdout")
+            .arg("--autocomplete=true");
+
+        let mut process = spawn_command(cmd, Some(10000))?;
+
+        process.expect_commit_type()?;
+        process.send_line("fix")?;
+        process.flush()?;
+        process.expect_scope()?;
+        process.send_line("")?;
+        process.flush()?;
+        process.expect_summary()?;
+        process.send_line("resolve issue")?;
+        process.flush()?;
+        process.expect_body()?;
+        process.send_line("")?;
+        process.flush()?;
+        process.expect_breaking()?;
+        process.send_line("N")?;
+        process.flush()?;
+        process.expect_issues()?;
+        process.send_line("N")?;
+        process.flush()?;
+
+        let expected_output = "fix: resolve issue";
+        let _ = process
+            .exp_string(expected_output)
+            .expect("failed to match output");
+
+        let eof_output = process.exp_eof();
+
+        let exitcode = process.process.wait()?;
+        let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+        if !success {
+            panic!("Command exited non-zero, end of output: {eof_output:#?}");
+        }
+
+        let description = jj_get_description(temp_dir.path());
+        assert!(
+            description.is_empty() || !description.contains("fix: resolve issue"),
+            "stdout mode should not have written to jj, but description is: {description}"
+        );
+
+        temp_dir.close()?;
+        config_temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_jj_pre_population() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+        let config_temp_dir = setup_config_home()?;
+
+        create_jj_repo(temp_dir.path());
+        fs::write(temp_dir.path().join("test.txt"), "content")?;
+
+        jj_describe(temp_dir.path(), "docs(readme): update installation guide");
+
+        // The existing description should be read and pre-populate the prompt.
+        let mut cmd = Command::new(&bin_path);
+        cmd.env("NO_COLOR", "1")
+            .arg("-C")
+            .arg(temp_dir.path())
+            .arg("--stdout")
+            .arg("--autocomplete=true");
+
+        let mut process = spawn_command(cmd, Some(10000))?;
+
+        // The prompt should appear; override the pre-populated values.
+        // Fields with `with_initial_value` need to be cleared with backspaces
+        // before typing new values since inquire appends to existing text.
+        process.expect_commit_type()?;
+        process.send_line("feat")?;
+        process.flush()?;
+        process.expect_scope()?;
+        // Clear pre-populated scope ("readme" = 6 chars)
+        for _ in 0..6 {
+            process.send("\x7f")?;
+        }
+        process.send_line("api")?;
+        process.flush()?;
+        process.expect_summary()?;
+        // Clear pre-populated summary ("update installation guide" = 25 chars)
+        for _ in 0..25 {
+            process.send("\x7f")?;
+        }
+        process.send_line("new endpoint")?;
+        process.flush()?;
+        process.expect_body()?;
+        process.send_line("")?;
+        process.flush()?;
+        process.expect_breaking()?;
+        process.send_line("N")?;
+        process.flush()?;
+        process.expect_issues()?;
+        process.send_line("N")?;
+        process.flush()?;
+
+        let expected_output = "feat(api): new endpoint";
+        let _ = process
+            .exp_string(expected_output)
+            .expect("failed to match output");
+
+        let eof_output = process.exp_eof();
+
+        let exitcode = process.process.wait()?;
+        let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+        if !success {
+            panic!("Command exited non-zero, end of output: {eof_output:#?}");
+        }
+
+        temp_dir.close()?;
+        config_temp_dir.close()?;
+        Ok(())
+    }
 }

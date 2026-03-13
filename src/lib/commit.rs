@@ -1,9 +1,8 @@
-use std::{fs::File, io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use cocogitto::command::commit::CommitOptions;
 use cocogitto::CocoGitto;
-use gix::Repository;
 
 /// Generates the commit message
 pub fn generate_commit_msg(
@@ -23,25 +22,6 @@ pub fn generate_commit_msg(
     )?;
 
     Ok(message)
-}
-
-/// Output a commit message to `.git/COMMIT_EDITMSG`
-pub fn write_commit_msg(
-    repo: &Repository,
-    commit_type: String,
-    scope: Option<String>,
-    summary: String,
-    body: Option<String>,
-    is_breaking_change: bool,
-) -> Result<()> {
-    let message = generate_commit_msg(commit_type, scope, summary, body, is_breaking_change)?;
-
-    let commit_editmsg = repo.path().join("COMMIT_EDITMSG");
-    let mut file = File::create(commit_editmsg)?;
-
-    file.write_all(message.as_bytes())?;
-
-    Ok(())
 }
 
 /// Create a commit
