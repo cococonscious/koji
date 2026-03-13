@@ -8,6 +8,14 @@ use std::path::PathBuf;
 #[cfg(any(unix, target_os = "redox"))]
 use xdg::BaseDirectories;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VcsPreference {
+    Auto,
+    Git,
+    Jj,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub autocomplete: bool,
@@ -17,6 +25,7 @@ pub struct Config {
     pub issues: bool,
     pub sign: bool,
     pub workdir: PathBuf,
+    pub vcs: Option<VcsPreference>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -35,6 +44,7 @@ struct ConfigTOML {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub vcs: Option<VcsPreference>,
 }
 
 #[derive(Default)]
@@ -50,7 +60,6 @@ pub struct ConfigArgs {
 }
 
 impl Config {
-    /// Find a config and load it
     pub fn new(args: Option<ConfigArgs>) -> Result<Self> {
         let ConfigArgs {
             path,
@@ -109,6 +118,7 @@ impl Config {
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
             workdir,
+            vcs: config.vcs,
         })
     }
 }

@@ -83,6 +83,7 @@ jobs:
         with:
           dry-run: ${{ env.ACT }}
           bin: ${{ inputs.package_name }}
+          features: jj
           ref: ${{ inputs.tag_ref }}
           target: ${{ matrix.target }}
           tar: all

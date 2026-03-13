@@ -4,6 +4,9 @@ issues = true
 emoji = false
 sign = false
 
+# "auto", "git", or "jj"
+vcs = "auto"
+
 [[commit_types]]
 name = "feat"
 emoji = "✨"

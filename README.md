@@ -24,6 +24,7 @@ for automatic versioning, changelog generation, and more
 - Autocomplete for commit scope
 - Run as a git hook
 - Custom commit types
+- Optional [jj (Jujutsu)](https://martinvonz.github.io/jj/) support
 
 ## Installation
 
@@ -128,6 +129,28 @@ for the commit summary. Writing your commit as a conventional commit,
 e.g. `git commit -m "feat(space): delete some stars"`, will bypass
 koji altogether.
 
+## Using with jj
+
+koji has optional support for [jj (Jujutsu)](https://martinvonz.github.io/jj/) repositories.
+When built with the `jj` feature, koji can describe the working-copy change directly
+instead of creating a git commit.
+
+### How it works
+
+- koji auto-detects whether you're in a jj or git repository
+- Running `koji` in a jj repo updates the working-copy change's description
+- If the working copy already has a conventional commit description, the prompts
+  are pre-filled so you can edit rather than start from scratch
+- The `--hook` flag is not supported with jj (jj does not have commit hooks)
+
+### Installing with jj support
+
+Pre-built release binaries include jj support. If you're building from source:
+
+```bash
+cargo install --locked koji --features jj
+```
+
 ## Configuration
 
 Config values are prioritized in the following order:
@@ -140,7 +163,8 @@ Config values are prioritized in the following order:
   - `~/.config/koji/config.toml`
 - Windows:
   - `%USERPROFILE%\AppData\Roaming\koji\config.toml`
-- The [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml) config
+- The [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml)
+  config
 
 ### Options
 
@@ -148,15 +172,19 @@ Config values are prioritized in the following order:
 
 - Type: `bool`
 - Optional: `true`
-- Description: Enables auto-complete for scope prompt via scanning commit history.
+- Description: Enables auto-complete for scope prompt via
+  scanning commit history.
+
 ```toml
 autocomplete = true
 ```
 
 #### `breaking-changes`
+
 - Type: `bool`
 - Optional: `true`
 - Description: Enables breaking change prompt.
+
 ```toml
 breaking_changes = true
 ```
@@ -165,7 +193,9 @@ breaking_changes = true
 
 - Type: `Vec<CommitType>`
 - Optional: `true`
-- Description: A list of commit types to use instead of the [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml).
+- Description: A list of commit types to use instead of the
+  [default](https://github.com/cococonscious/koji/blob/main/meta/config/default.toml).
+
 ```toml
 [[commit_types]]
 name = "feat"
@@ -177,7 +207,9 @@ description = "A new feature"
 
 - Type: `bool`
 - Optional: `true`
-- Description: Prepend the commit summary with relevant emoji based on commit type.
+- Description: Prepend the commit summary with relevant emoji
+  based on commit type.
+
 ```toml
 emoji = true
 ```
@@ -186,8 +218,22 @@ emoji = true
 
 - Type: `bool`
 - Optional: `true`
-- Description: Enables issue prompt, which will append a reference to an issue in the commit body.
+- Description: Enables issue prompt, which will append a
+  reference to an issue in the commit body.
+
 ```toml
 issues = true
 ```
 
+#### `vcs`
+
+- Type: `string`
+- Optional: `true`
+- Description: Controls which VCS backend to use. By default
+  (`"auto"`), koji auto-detects the repository type, preferring
+  jj when a `.jj/` directory is found. Set to `"git"` or `"jj"`
+  to force a specific backend.
+
+```toml
+vcs = "auto"
+```

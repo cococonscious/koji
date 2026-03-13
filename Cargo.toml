@@ -11,6 +11,10 @@ documentation = "https://docs.rs/koji"
 repository = "https://github.com/cococonscious/koji"
 license = "MIT"
 
+[features]
+default = []
+jj = ["dep:jj-lib", "dep:pollster"]
+
 [[bin]]
 name = "koji"
 path = "src/bin/main.rs"
@@ -33,6 +37,10 @@ clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
 gix = "0.80.0"
+
+# Optional jj support
+jj-lib = { version = "0.39", optional = true }
+pollster = { version = "0.4", optional = true }
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
