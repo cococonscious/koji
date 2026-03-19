@@ -68,7 +68,25 @@ impl VcsBackend {
             }
         }
 
-        Self::open_git(path)
+        let jj_hint = if cfg!(feature = "jj") { " or jj" } else { "" };
+        let ctx = format!("could not find a supported repository (git{jj_hint})");
+
+        let result = Self::open_git(path).context(ctx);
+
+        #[cfg(not(feature = "jj"))]
+        if result.is_err() {
+            let mut current = Some(path);
+            while let Some(dir) = current {
+                if dir.join(".jj").is_dir() {
+                    anyhow::bail!(
+                        "found a .jj/ directory but koji was not compiled with jj support"
+                    );
+                }
+                current = dir.parent();
+            }
+        }
+
+        result
     }
 
     fn open_git(path: &Path) -> Result<Self> {

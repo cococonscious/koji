@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use cocogitto::command::commit::CommitOptions;
 use conventional_commit_parser::parse;
@@ -162,8 +162,7 @@ fn main() -> Result<()> {
         _current_dir: Some(current_dir.clone()),
     }))?;
 
-    let backend = VcsBackend::detect_with_hint(&current_dir, config.vcs)
-        .context("could not find a supported repository (git or jj)")?;
+    let backend = VcsBackend::detect_with_hint(&current_dir, config.vcs)?;
 
     if hook && !backend.supports_hooks() {
         anyhow::bail!("--hook mode is not supported with jj repositories (jj has no commit hooks)");
