@@ -84,6 +84,24 @@ See `koji --help` for more options.
 
 Use `koji completions <SHELL>` to generate completion scripts for your shell.
 
+### Git hooks
+
+When you commit with koji, the repository's `pre-commit` and `post-commit`
+hooks run around the commit, mirroring `git commit` behavior. If a
+`pre-commit` hook exits non-zero, the commit is aborted. A failing
+`post-commit` hook is reported as a warning and does not abort, matching
+`git commit`.
+
+Pass `--no-verify` to bypass both hooks:
+
+```bash
+koji --no-verify
+```
+
+When `--all` is set, koji stages tracked modified or deleted files (matching
+`git commit -a`) before `pre-commit` runs, regardless of whether hooks are
+enabled.
+
 ## Using as a git hook
 
 An alternative way to use koji is as a [git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks),
