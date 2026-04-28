@@ -99,6 +99,13 @@ struct Args {
     all: bool,
 
     #[arg(
+        long,
+        help = "Bypass the pre-commit and post-commit git hooks",
+        conflicts_with = "hook"
+    )]
+    no_verify: bool,
+
+    #[arg(
         short = 'y',
         long,
         help = "Skip the confirmation prompt and proceed with the commit"
@@ -134,6 +141,7 @@ fn main() -> Result<()> {
         issues,
         sign,
         all,
+        no_verify,
         yes,
         current_workdir,
     } = Args::parse();
@@ -250,7 +258,7 @@ fn main() -> Result<()> {
             update_files: false,
         };
 
-        commit(current_dir, options)?;
+        commit(current_dir, options, no_verify)?;
     }
 
     Ok(())
