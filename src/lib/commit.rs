@@ -138,12 +138,23 @@ fn stage_tracked(repo: &Repository) -> Result<()> {
         let abs = workdir.join(gix::path::from_bstr(bstr).as_ref());
         let bytes = std::fs::read(&abs)?;
         let oid = repo.write_blob(&bytes)?.detach();
+        let metadata = gix::index::fs::Metadata::from_path_no_follow(&abs)?;
+        let stat = gix::index::entry::Stat::from_fs(&metadata)?;
         if let Some(entry) =
             index.entry_mut_by_path_and_stage(bstr, gix::index::entry::Stage::Unconflicted)
         {
             entry.id = oid;
+            // Refresh stat from disk so `git status` doesn't flag the file as
+            // modified after commit due to a stale mtime/size in the index.
+            entry.stat = stat;
         }
     }
+
+    // Drop the cached TREE extension. Mutating entries above leaves the cache
+    // pointing at the pre-edit tree; libgit2's `index.write_tree()` honors that
+    // cache and would otherwise return the old tree id, producing an empty
+    // commit (same tree as HEAD) when cocogitto writes the commit.
+    index.remove_tree();
 
     index.write(gix::index::write::Options::default())?;
     Ok(())
