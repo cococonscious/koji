@@ -95,7 +95,11 @@ struct Args {
     )]
     sign: Option<bool>,
 
-    #[arg(short, long, help = "Stage all tracked modified or deleted files")]
+    #[arg(
+        short,
+        long,
+        help = "Stage all changes (modified, deleted, and untracked files)"
+    )]
     all: bool,
 
     #[arg(
@@ -175,7 +179,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // --hook and --stdout don't create commits; --all stages tracked files automatically
+    // --hook and --stdout don't create commits; --all stages everything (incl. untracked)
     if !hook && !stdout && !all {
         match check_staging(&repo)? {
             StagingStatus::Empty => {

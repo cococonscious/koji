@@ -1035,7 +1035,7 @@ fn test_post_commit_hook_failure_does_not_abort() -> Result<(), Box<dyn Error>> 
 
 #[test]
 #[cfg(not(target_os = "windows"))]
-fn test_all_stages_tracked_only() -> Result<(), Box<dyn Error>> {
+fn test_all_stages_modified_and_untracked() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
@@ -1059,7 +1059,7 @@ fn test_all_stages_tracked_only() -> Result<(), Box<dyn Error>> {
         .arg("--autocomplete=true");
 
     let mut process = spawn_command(cmd, Some(5000))?;
-    drive_simple_fix_commit(&mut process, "stage tracked only")?;
+    drive_simple_fix_commit(&mut process, "stage modified and untracked")?;
     let eof_output = process.exp_eof();
 
     let exitcode = process.process.wait()?;
@@ -1068,17 +1068,58 @@ fn test_all_stages_tracked_only() -> Result<(), Box<dyn Error>> {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
-    // tracked.txt updated; untracked.txt left out of the commit.
+    // Both tracked.txt update and the new untracked.txt should be in the commit.
     let commit = get_last_commit(&repo)?;
     let tree = commit.tree()?;
     assert!(
         tree.get_name("tracked.txt").is_some(),
         "tracked.txt missing"
     );
-    assert!(
-        tree.get_name("untracked.txt").is_none(),
-        "untracked.txt should not be staged"
-    );
+    let untracked_entry = tree
+        .get_name("untracked.txt")
+        .expect("untracked.txt should be staged by --all");
+    let blob = repo.find_blob(untracked_entry.id())?;
+    assert_eq!(blob.content(), b"u");
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_all_stages_in_fresh_repo_without_initial_commit() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    // No initial commit, no .git/index file. Just an untracked file.
+    fs::write(temp_dir.path().join("untracked.txt"), "u")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--all")
+        .arg("-y")
+        .arg("--autocomplete=true");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+    drive_simple_fix_commit(&mut process, "stage in fresh repo")?;
+    let eof_output = process.exp_eof();
+
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    if !success {
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
+    }
+
+    let commit = get_last_commit(&repo)?;
+    let tree = commit.tree()?;
+    let untracked_entry = tree
+        .get_name("untracked.txt")
+        .expect("untracked.txt should be staged by --all");
+    let blob = repo.find_blob(untracked_entry.id())?;
+    assert_eq!(blob.content(), b"u");
 
     temp_dir.close()?;
     config_temp_dir.close()?;
