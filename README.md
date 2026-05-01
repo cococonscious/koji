@@ -191,3 +191,27 @@ emoji = true
 issues = true
 ```
 
+#### `scope-patterns`
+
+- Type: `table`
+- Optional: `true`
+- Description: Pre-assign commit scopes from staged paths. Patterns are matched against repo-relative paths prefixed with `/`, and each entry can be a single regex/glob string or a list of patterns.
+```toml
+[scope_patterns]
+flakes = "/flake\\.nix$"
+core = "/crates/core/**/*.rs"
+build = ["^/build\\.rs$", "/justfile"]
+```
+
+#### Ast-grep Scope Config
+
+- Location: In the normal Koji config file alongside the rest of the scope config
+- Optional: `true`
+- Description: Ast-grep rules can pre-assign commit scopes from structural code matches.
+```toml
+[[scope_ast_grep]]
+scope = "test"
+language = "Rust"
+files = ["**/*.rs"]
+rule = { kind = "function_item", has = { stopBy = "end", pattern = "#[test]" } }
+```
