@@ -4,6 +4,7 @@ use dirs::config_dir;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::env::current_dir;
+use std::fmt;
 use std::path::PathBuf;
 #[cfg(any(unix, target_os = "redox"))]
 use xdg::BaseDirectories;
@@ -20,6 +21,8 @@ pub struct Config {
     pub force_scope: bool,
     pub allow_empty_scope: bool,
     pub workdir: PathBuf,
+    pub scope_patterns: IndexMap<String, ScopePatternValue>,
+    pub scope_ast_grep: Vec<ScopeAstGrepRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -35,6 +38,37 @@ pub struct CommitScope {
     pub description: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum ScopePatternValue {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl ScopePatternValue {
+    pub fn iter(&self) -> Box<dyn Iterator<Item = &str> + '_> {
+        match self {
+            Self::One(pattern) => Box::new(std::iter::once(pattern.as_str())),
+            Self::Many(patterns) => Box::new(patterns.iter().map(String::as_str)),
+        }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+pub struct ScopeAstGrepRule {
+    pub scope: String,
+    #[serde(flatten)]
+    pub rule: ast_grep_config::SerializableRuleConfig<ast_grep_language::SupportLang>,
+}
+
+impl fmt::Debug for ScopeAstGrepRule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ScopeAstGrepRule")
+            .field("scope", &self.scope)
+            .finish_non_exhaustive()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct ConfigTOML {
     pub autocomplete: bool,
@@ -48,6 +82,10 @@ struct ConfigTOML {
     pub sign: bool,
     pub force_scope: bool,
     pub allow_empty_scope: bool,
+    #[serde(default)]
+    scope_patterns: IndexMap<String, ScopePatternValue>,
+    #[serde(default)]
+    scope_ast_grep: Vec<ScopeAstGrepRule>,
 }
 
 #[derive(Default)]
@@ -92,7 +130,7 @@ impl Config {
         let mut config_dirs = vec![config_dir()];
         #[cfg(any(unix, target_os = "redox"))]
         config_dirs.push(BaseDirectories::new().get_config_home());
-        config_dirs.push(_user_config_path);
+        config_dirs.push(_user_config_path.clone());
 
         settings = config_dirs
             .into_iter()
@@ -106,7 +144,7 @@ impl Config {
         settings = settings.add_source(config::File::from(working_dir_path).required(false));
 
         // Try to get config from passed directory
-        if let Some(path) = path {
+        if let Some(path) = path.clone() {
             settings = settings.add_source(config::File::from(path).required(false));
         }
 
@@ -123,8 +161,24 @@ impl Config {
         for commit_scope in config.commit_scopes.iter() {
             commit_scopes.insert(commit_scope.name.clone(), commit_scope.to_owned());
         }
+        for scope in config.scope_patterns.keys() {
+            commit_scopes
+                .entry(scope.clone())
+                .or_insert_with(|| CommitScope {
+                    name: scope.clone(),
+                    description: None,
+                });
+        }
+        for rule in &config.scope_ast_grep {
+            commit_scopes
+                .entry(rule.scope.clone())
+                .or_insert_with(|| CommitScope {
+                    name: rule.scope.clone(),
+                    description: None,
+                });
+        }
 
-        Ok(Config {
+        let config = Config {
             autocomplete: autocomplete.unwrap_or(config.autocomplete),
             breaking_changes: breaking_changes.unwrap_or(config.breaking_changes),
             commit_types,
@@ -135,7 +189,14 @@ impl Config {
             force_scope: force_scope.unwrap_or(config.force_scope),
             allow_empty_scope: allow_empty_scope.unwrap_or(config.allow_empty_scope),
             workdir,
-        })
+            scope_patterns: config.scope_patterns,
+            scope_ast_grep: config.scope_ast_grep,
+        };
+
+        crate::scope::validate_scope_patterns(&config)?;
+        crate::scope::validate_ast_grep_rules(&config)?;
+
+        Ok(config)
     }
 }
 
@@ -353,6 +414,50 @@ mod tests {
         assert_eq!(config.commit_scopes.len(), 2);
         tempdir_current.close()?;
         tempdir_config.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_scope_patterns_add_scopes() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "[scope_patterns]\ncore = \"/crates/core/**/*.rs\"\nbuild = [\"^/build\\\\.rs$\", \"/justfile\"]",
+        )?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+
+        assert!(config.commit_scopes.contains_key("core"));
+        assert!(config.commit_scopes.contains_key("build"));
+        assert_eq!(
+            config.scope_patterns.get("core"),
+            Some(&ScopePatternValue::One("/crates/core/**/*.rs".into()))
+        );
+
+        tempdir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_scope_ast_grep_adds_scopes() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "[[scope_ast_grep]]\nscope = \"test\"\nlanguage = \"Rust\"\nrule = { kind = \"function_item\", has = { stopBy = \"end\", pattern = \"#[test]\" } }\nfiles = [\"**/*.rs\"]",
+        )?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+
+        assert!(config.commit_scopes.contains_key("test"));
+        assert_eq!(config.scope_ast_grep.len(), 1);
+
+        tempdir.close()?;
         Ok(())
     }
 }
