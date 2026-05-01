@@ -9,6 +9,7 @@ use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
 use koji::questions::{create_prompt, prompt_confirm};
+use koji::scope::detect_scope_matches;
 use koji::status::{check_staging, StagingStatus};
 
 #[derive(Parser, Debug)]
@@ -196,8 +197,10 @@ fn main() -> Result<()> {
         ..Default::default()
     }))?;
 
+    let scope_matches = detect_scope_matches(&repo, &config)?;
+
     // Get answers from interactive prompt
-    let answers = create_prompt(commit_message, &config)?;
+    let answers = create_prompt(commit_message, &config, &scope_matches)?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {
