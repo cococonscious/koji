@@ -1,4 +1,5 @@
 use crate::config::{CommitType, Config};
+use crate::scope::ScopeMatches;
 use anyhow::{Context, Result};
 use conventional_commit_parser::parse_summary;
 use gix::bstr::ByteSlice;
@@ -184,19 +185,39 @@ impl Autocomplete for ScopeAutocompleter {
     }
 }
 
-fn prompt_scope(config: &Config) -> Result<Option<String>> {
+fn format_scope_value(scope: &crate::config::CommitScope) -> String {
+    if let Some(desc) = &scope.description {
+        format!("{}: {}", scope.name, desc)
+    } else {
+        scope.name.clone()
+    }
+}
+
+fn get_force_scope_values(config: &Config, scope_matches: &ScopeMatches) -> Vec<String> {
+    let mut scope_values = Vec::new();
+
+    for matched_scope in &scope_matches.matches {
+        if let Some(scope) = config.commit_scopes.get(matched_scope) {
+            scope_values.push(format_scope_value(scope));
+        }
+    }
+
+    for scope in config.commit_scopes.values() {
+        if !scope_matches.matches.contains(&scope.name) {
+            scope_values.push(format_scope_value(scope));
+        }
+    }
+
+    scope_values
+}
+
+fn prompt_scope(config: &Config, scope_matches: &ScopeMatches) -> Result<Option<String>> {
     if config.force_scope && !config.commit_scopes.is_empty() {
-        let scope_values: Vec<String> = config
-            .commit_scopes
-            .values()
-            .map(|scope| {
-                if let Some(desc) = &scope.description {
-                    format!("{}: {}", scope.name, desc)
-                } else {
-                    scope.name.clone()
-                }
-            })
-            .collect();
+        if let Some(scope) = scope_matches.suggested() {
+            return Ok(Some(scope));
+        }
+
+        let scope_values = get_force_scope_values(config, scope_matches);
 
         let prompt = Select::new("What's the scope of this change?", scope_values)
             .with_render_config(get_render_config())
@@ -220,16 +241,35 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
     let mut scope_autocompleter = ScopeAutocompleter {
         config: config.clone(),
     };
-    let help_message =
-        if config.autocomplete && !scope_autocompleter.get_suggestions("").unwrap().is_empty() {
+    let detected_scope = scope_matches.suggested();
+    let help_message = match (
+        config.autocomplete && !scope_autocompleter.get_suggestions("").unwrap().is_empty(),
+        detected_scope.as_ref(),
+        scope_matches.matches.len(),
+    ) {
+        (true, Some(scope), _) => {
+            format!("↑↓ to move, tab to autocomplete, enter to use `{scope}`, <esc> to skip")
+        }
+        (true, None, count) if count > 1 => format!(
+            "↑↓ to move, tab to autocomplete, matched scopes: {}, {}",
+            scope_matches.matches.join(", "),
+            get_skip_hint()
+        ),
+        (true, None, _) => format!(
+            "{}, {}",
+            "↑↓ to move, tab to autocomplete, enter to submit",
+            get_skip_hint()
+        ),
+        (false, Some(scope), _) => format!("enter to use `{scope}`, <esc> to skip"),
+        (false, None, count) if count > 1 => {
             format!(
-                "{}, {}",
-                "↑↓ to move, tab to autocomplete, enter to submit",
+                "matched scopes: {}, {}",
+                scope_matches.matches.join(", "),
                 get_skip_hint()
             )
-        } else {
-            get_skip_hint().to_string()
-        };
+        }
+        _ => get_skip_hint().to_string(),
+    };
 
     let mut selected_scope = Text::new("What's the scope of this change?")
         .with_render_config(RenderConfig {
@@ -243,8 +283,9 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
     }
 
     if !config.allow_empty_scope {
-        selected_scope = selected_scope.with_validator(|input: &str| {
-            if input.trim().is_empty() {
+        let allow_detected_scope = detected_scope.is_some();
+        selected_scope = selected_scope.with_validator(move |input: &str| {
+            if input.trim().is_empty() && !allow_detected_scope {
                 Ok(Validation::Invalid("A scope is required".into()))
             } else {
                 Ok(Validation::Valid)
@@ -256,7 +297,7 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
         .prompt_skippable()
         .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
     {
-        Some(scope) if scope.is_empty() => Ok(None),
+        Some(scope) if scope.is_empty() => Ok(detected_scope),
         scope => Ok(scope),
     }
 }
@@ -350,9 +391,13 @@ pub struct Answers {
 }
 
 /// Create the interactive prompt
-pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
+pub fn create_prompt(
+    last_message: String,
+    config: &Config,
+    scope_matches: &ScopeMatches,
+) -> Result<Answers> {
     let commit_type = prompt_type(config)?;
-    let scope = prompt_scope(config)?;
+    let scope = prompt_scope(config, scope_matches)?;
     let summary = prompt_summary(last_message)?;
     let body = prompt_body()?;
 
