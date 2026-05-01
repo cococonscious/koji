@@ -3,6 +3,7 @@ use indexmap::IndexMap;
 use inquire::autocompletion::Autocomplete;
 use koji::config::{CommitScope, Config};
 use koji::questions::ScopeAutocompleter;
+use koji::scope::detect_scope_matches;
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
     process::wait,
@@ -822,6 +823,8 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
         sign: false,
         force_scope: false,
         allow_empty_scope: true,
+        scope_patterns: IndexMap::new(),
+        scope_ast_grep: Vec::new(),
     };
 
     let mut autocompleter = ScopeAutocompleter { config };
@@ -955,5 +958,84 @@ fn test_require_scope_integration() -> Result<(), Box<dyn Error>> {
 
     temp_dir.close()?;
     config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "windows"))]
+fn test_scope_pattern_auto_assigns_scope() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "[scope_patterns]\nconfig = \"/config\\\\.json$\"",
+    )?;
+    fs::write(temp_dir.path().join("config.json"), "abc")?;
+    git_add(&repo, ".")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("feat")?;
+    process.flush()?;
+    process.expect_scope()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_summary()?;
+    process.send_line("wire auto scope")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let _ = process.exp_string("feat(config): wire auto scope")?;
+    let eof_output = process.exp_eof();
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
+    }
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
+fn test_detect_scope_matches_from_scope_patterns() -> Result<(), Box<dyn Error>> {
+    let temp_dir = tempfile::tempdir()?;
+    let repo = Repository::init(temp_dir.path())?;
+    let gix_repo = gix::discover(temp_dir.path())?;
+
+    fs::write(temp_dir.path().join("config.json"), "abc")?;
+    git_add(&repo, ".")?;
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "[scope_patterns]\nconfig = \"/config\\\\.json$\"",
+    )?;
+
+    let config = Config::new(Some(koji::config::ConfigArgs {
+        _current_dir: Some(temp_dir.path().to_path_buf()),
+        ..Default::default()
+    }))?;
+
+    let matches = detect_scope_matches(&gix_repo, &config)?;
+    assert_eq!(matches.suggested(), Some("config".into()));
+
+    temp_dir.close()?;
     Ok(())
 }
