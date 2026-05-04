@@ -364,7 +364,8 @@ impl VcsBackend {
                 Err(_) => break,
             };
             let desc = ancestor.description().to_string();
-            if let Ok(parsed) = parse_summary(&desc) {
+            let first_line = desc.lines().next().unwrap_or("");
+            if let Ok(parsed) = parse_summary(first_line) {
                 if let Some(scope) = parsed.scope {
                     if !scopes.contains(&scope) {
                         scopes.push(scope);
