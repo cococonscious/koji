@@ -260,7 +260,12 @@ impl VcsBackend {
     // ---- jj-specific implementations ----
 
     #[cfg(feature = "jj")]
-    fn jj_load_repo(workspace_root: &Path) -> Result<std::sync::Arc<jj_lib::repo::ReadonlyRepo>> {
+    fn jj_load_repo(
+        workspace_root: &Path,
+    ) -> Result<(
+        std::sync::Arc<jj_lib::repo::ReadonlyRepo>,
+        jj_lib::ref_name::WorkspaceNameBuf,
+    )> {
         use jj_lib::config::StackedConfig;
         use jj_lib::repo::StoreFactories;
         use jj_lib::settings::UserSettings;
@@ -275,6 +280,7 @@ impl VcsBackend {
 
         let workspace = Workspace::load(&settings, workspace_root, &store_factories, &wc_factories)
             .context("could not load jj workspace")?;
+        let workspace_name = workspace.workspace_name().to_owned();
 
         let repo = workspace
             .repo_loader()
@@ -282,20 +288,20 @@ impl VcsBackend {
             .block_on()
             .context("could not load jj repo at head")?;
 
-        Ok(repo)
+        Ok((repo, workspace_name))
     }
 
     #[cfg(feature = "jj")]
     fn jj_wc_commit(
         repo: &std::sync::Arc<jj_lib::repo::ReadonlyRepo>,
+        workspace_name: &jj_lib::ref_name::WorkspaceName,
     ) -> Result<jj_lib::commit::Commit> {
-        use jj_lib::ref_name::WorkspaceName;
         use jj_lib::repo::Repo as _;
 
         let wc_commit_id = repo
             .view()
-            .get_wc_commit_id(WorkspaceName::DEFAULT)
-            .context("no working copy commit found for default workspace")?;
+            .get_wc_commit_id(workspace_name)
+            .context("no working copy commit found for current workspace")?;
 
         let commit = repo
             .store()
@@ -307,8 +313,8 @@ impl VcsBackend {
 
     #[cfg(feature = "jj")]
     fn jj_read_current_description(workspace_root: &Path) -> Result<Option<String>> {
-        let repo = Self::jj_load_repo(workspace_root)?;
-        let commit = Self::jj_wc_commit(&repo)?;
+        let (repo, workspace_name) = Self::jj_load_repo(workspace_root)?;
+        let commit = Self::jj_wc_commit(&repo, &workspace_name)?;
         let desc = commit.description().to_string();
         if desc.trim().is_empty() {
             Ok(None)
@@ -321,8 +327,8 @@ impl VcsBackend {
     fn jj_write_description(workspace_root: &Path, message: &str) -> Result<()> {
         use pollster::FutureExt as _;
 
-        let repo = Self::jj_load_repo(workspace_root)?;
-        let commit = Self::jj_wc_commit(&repo)?;
+        let (repo, workspace_name) = Self::jj_load_repo(workspace_root)?;
+        let commit = Self::jj_wc_commit(&repo, &workspace_name)?;
 
         let mut tx = repo.start_transaction();
         tx.repo_mut()
@@ -347,8 +353,8 @@ impl VcsBackend {
         use jj_lib::repo::Repo as _;
         use jj_lib::revset::{ResolvedRevsetExpression, RevsetIteratorExt as _};
 
-        let repo = Self::jj_load_repo(workspace_root)?;
-        let commit = Self::jj_wc_commit(&repo)?;
+        let (repo, workspace_name) = Self::jj_load_repo(workspace_root)?;
+        let commit = Self::jj_wc_commit(&repo, &workspace_name)?;
 
         let ancestors_expr =
             ResolvedRevsetExpression::commits(vec![commit.id().clone()]).ancestors();

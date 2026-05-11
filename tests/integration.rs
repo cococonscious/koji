@@ -776,10 +776,11 @@ mod jj_tests {
     use std::path::Path;
 
     use jj_lib::config::StackedConfig;
-    use jj_lib::ref_name::WorkspaceName;
     use jj_lib::repo::{ReadonlyRepo, Repo as _, StoreFactories};
     use jj_lib::settings::UserSettings;
-    use jj_lib::workspace::{default_working_copy_factories, Workspace};
+    use jj_lib::workspace::{
+        default_working_copy_factories, default_working_copy_factory, Workspace,
+    };
     use pollster::FutureExt as _;
     use std::sync::Arc;
 
@@ -804,23 +805,30 @@ mod jj_tests {
             .expect("failed to init colocated jj repo");
     }
 
-    fn jj_load_repo(workspace_root: &Path) -> Arc<ReadonlyRepo> {
+    fn jj_load_repo(
+        workspace_root: &Path,
+    ) -> (Arc<ReadonlyRepo>, jj_lib::ref_name::WorkspaceNameBuf) {
         let settings = jj_settings();
         let store_factories = StoreFactories::default();
         let wc_factories = default_working_copy_factories();
         let workspace = Workspace::load(&settings, workspace_root, &store_factories, &wc_factories)
             .expect("could not load jj workspace");
-        workspace
+        let workspace_name = workspace.workspace_name().to_owned();
+        let repo = workspace
             .repo_loader()
             .load_at_head()
             .block_on()
-            .expect("could not load jj repo at head")
+            .expect("could not load jj repo at head");
+        (repo, workspace_name)
     }
 
-    fn jj_wc_commit(repo: &Arc<ReadonlyRepo>) -> jj_lib::commit::Commit {
+    fn jj_wc_commit(
+        repo: &Arc<ReadonlyRepo>,
+        workspace_name: &jj_lib::ref_name::WorkspaceName,
+    ) -> jj_lib::commit::Commit {
         let wc_commit_id = repo
             .view()
-            .get_wc_commit_id(WorkspaceName::DEFAULT)
+            .get_wc_commit_id(workspace_name)
             .expect("no working copy commit found");
         repo.store()
             .get_commit(wc_commit_id)
@@ -829,15 +837,15 @@ mod jj_tests {
 
     /// Get the current `@` commit description via jj-lib.
     fn jj_get_description(dir: &Path) -> String {
-        let repo = jj_load_repo(dir);
-        let commit = jj_wc_commit(&repo);
+        let (repo, workspace_name) = jj_load_repo(dir);
+        let commit = jj_wc_commit(&repo, &workspace_name);
         commit.description().trim().to_string()
     }
 
     /// Describe the current `@` commit (for pre-population tests).
     fn jj_describe(dir: &Path, message: &str) {
-        let repo = jj_load_repo(dir);
-        let commit = jj_wc_commit(&repo);
+        let (repo, workspace_name) = jj_load_repo(dir);
+        let commit = jj_wc_commit(&repo, &workspace_name);
         let mut tx = repo.start_transaction();
         tx.repo_mut()
             .rewrite_commit(&commit)
@@ -852,6 +860,36 @@ mod jj_tests {
         tx.commit("test: describe change")
             .block_on()
             .expect("could not commit jj transaction");
+    }
+
+    fn create_jj_workspace(existing_workspace_root: &Path, new_workspace_root: &Path, name: &str) {
+        std::fs::create_dir_all(new_workspace_root).expect("failed to create workspace directory");
+
+        let settings = jj_settings();
+        let store_factories = StoreFactories::default();
+        let wc_factories = default_working_copy_factories();
+        let existing_workspace = Workspace::load(
+            &settings,
+            existing_workspace_root,
+            &store_factories,
+            &wc_factories,
+        )
+        .expect("could not load existing workspace");
+        let repo = existing_workspace
+            .repo_loader()
+            .load_at_head()
+            .block_on()
+            .expect("could not load repo at head");
+
+        Workspace::init_workspace_with_existing_repo(
+            new_workspace_root,
+            existing_workspace.repo_path(),
+            &repo,
+            &*default_working_copy_factory(),
+            name.into(),
+        )
+        .block_on()
+        .expect("failed to create workspace");
     }
 
     // ---- Non-interactive tests ----
@@ -997,6 +1035,66 @@ mod jj_tests {
         assert_eq!(
             description, "feat(core): add readme",
             "jj describe did not set the expected commit message"
+        );
+
+        temp_dir.close()?;
+        config_temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_jj_describe_in_non_default_workspace() -> Result<(), Box<dyn Error>> {
+        let bin_path = assert_cmd::cargo::cargo_bin!("koji").to_path_buf();
+        let temp_dir = tempfile::tempdir()?;
+        let config_temp_dir = setup_config_home()?;
+        let second_workspace_path = temp_dir.path().join("secondary-workspace");
+
+        create_jj_repo(temp_dir.path());
+        create_jj_workspace(temp_dir.path(), &second_workspace_path, "secondary");
+
+        fs::write(second_workspace_path.join("README.md"), "hello")?;
+
+        let mut cmd = Command::new(&bin_path);
+        cmd.env("NO_COLOR", "1")
+            .arg("-C")
+            .arg(&second_workspace_path)
+            .arg("-y")
+            .arg("--autocomplete=true");
+
+        let mut process = spawn_command(cmd, Some(10000))?;
+
+        process.expect_commit_type()?;
+        process.send_line("feat")?;
+        process.flush()?;
+        process.expect_scope()?;
+        process.send_line("workspace")?;
+        process.flush()?;
+        process.expect_summary()?;
+        process.send_line("describe from non-default workspace")?;
+        process.flush()?;
+        process.expect_body()?;
+        process.send_line("")?;
+        process.flush()?;
+        process.expect_breaking()?;
+        process.send_line("N")?;
+        process.flush()?;
+        process.expect_issues()?;
+        process.send_line("N")?;
+        process.flush()?;
+        let eof_output = process.exp_eof();
+
+        let exitcode = process.process.wait()?;
+        let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+        if !success {
+            panic!("Command exited non-zero, end of output: {eof_output:#?}");
+        }
+
+        let description = jj_get_description(&second_workspace_path);
+        assert_eq!(
+            description, "feat(workspace): describe from non-default workspace",
+            "jj describe did not set the expected commit message in non-default workspace"
         );
 
         temp_dir.close()?;
