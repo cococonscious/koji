@@ -95,6 +95,14 @@ struct Args {
     )]
     sign: Option<bool>,
 
+    #[arg(
+        long,
+        value_name = "LENGTH",
+        help_heading = Some("Configuration"),
+        help = "Maximum character length for commit summary"
+    )]
+    max_summary_length: Option<usize>,
+
     #[arg(short, long, help = "Stage all tracked modified or deleted files")]
     all: bool,
 
@@ -133,6 +141,7 @@ fn main() -> Result<()> {
         stdout,
         issues,
         sign,
+        max_summary_length,
         all,
         yes,
         current_workdir,
@@ -191,6 +200,7 @@ fn main() -> Result<()> {
         issues,
         path: config,
         sign,
+        max_summary_length,
         _user_config_path: None,
         _current_dir: Some(current_dir.clone()),
     }))?;

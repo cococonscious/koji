@@ -61,6 +61,22 @@ fn validate_summary(input: &str) -> Result<Validation, CustomUserError> {
     }
 }
 
+fn validate_summary_with_max_length(input: &str, max_length: Option<usize>) -> Result<Validation, CustomUserError> {
+    if input.trim().is_empty() {
+        return Ok(Validation::Invalid("A summary is required".into()));
+    }
+
+    if let Some(max_len) = max_length {
+        if input.chars().count() > max_len {
+            return Ok(Validation::Invalid(
+                format!("Summary must be {} characters or less (current: {})", max_len, input.chars().count()).into()
+            ));
+        }
+    }
+
+    Ok(Validation::Valid)
+}
+
 fn validate_issue_reference(input: &str) -> Result<Validation, CustomUserError> {
     if input.trim().is_empty() {
         Ok(Validation::Invalid("An issue reference is required".into()))
@@ -183,7 +199,7 @@ fn prompt_scope(config: &Config) -> Result<Option<String>> {
     }
 }
 
-fn prompt_summary(msg: String) -> Result<String> {
+fn prompt_summary(msg: String, max_length: Option<usize>) -> Result<String> {
     let previous_summary = match parse_summary(&msg) {
         Ok(parsed) => parsed.summary,
         Err(_) => "".into(),
@@ -192,7 +208,7 @@ fn prompt_summary(msg: String) -> Result<String> {
     let summary = Text::new("Write a short, imperative tense description of the change:")
         .with_render_config(get_render_config())
         .with_placeholder(&previous_summary)
-        .with_validator(validate_summary)
+        .with_validator(move |input: &str| validate_summary_with_max_length(input, max_length))
         .prompt()?;
 
     Ok(summary)
@@ -277,7 +293,7 @@ pub struct Answers {
 pub fn create_prompt(last_message: String, config: &Config) -> Result<Answers> {
     let commit_type = prompt_type(config)?;
     let scope = prompt_scope(config)?;
-    let summary = prompt_summary(last_message)?;
+    let summary = prompt_summary(last_message, config.max_summary_length)?;
     let body = prompt_body()?;
 
     let mut breaking = false;
@@ -409,5 +425,38 @@ mod tests {
             .eq(&Validation::Invalid(
                 "An issue reference is required".into()
             )));
+    }
+
+    #[test]
+    fn test_validate_summary_with_max_length() {
+        // Test within limit
+        let validated = validate_summary_with_max_length("short summary", Some(72));
+        assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Valid));
+
+        // Test exceeding limit
+        let long_summary = "a".repeat(73);
+        let validated = validate_summary_with_max_length(&long_summary, Some(72));
+        assert!(validated.is_ok());
+        assert!(matches!(
+            validated.expect("Summary should be OK"),
+            Validation::Invalid(_)
+        ));
+
+        // Test no limit
+        let validated = validate_summary_with_max_length(&long_summary, None);
+        assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Valid));
+
+        // Test empty with limit
+        let validated = validate_summary_with_max_length("", Some(72));
+        assert!(validated.is_ok());
+        assert!(validated
+            .expect("Summary should be OK")
+            .eq(&Validation::Invalid("A summary is required".into())));
     }
 }

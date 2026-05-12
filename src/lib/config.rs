@@ -16,6 +16,7 @@ pub struct Config {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub max_summary_length: Option<usize>,
     pub workdir: PathBuf,
 }
 
@@ -35,6 +36,7 @@ struct ConfigTOML {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
+    pub max_summary_length: Option<usize>,
 }
 
 #[derive(Default)]
@@ -45,6 +47,7 @@ pub struct ConfigArgs {
     pub emoji: Option<bool>,
     pub issues: Option<bool>,
     pub sign: Option<bool>,
+    pub max_summary_length: Option<usize>,
     pub _user_config_path: Option<PathBuf>,
     pub _current_dir: Option<PathBuf>,
 }
@@ -59,6 +62,7 @@ impl Config {
             emoji,
             issues,
             sign,
+            max_summary_length,
             _user_config_path,
             _current_dir,
         } = args.unwrap_or_default();
@@ -108,6 +112,7 @@ impl Config {
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
+            max_summary_length: max_summary_length.or(config.max_summary_length),
             workdir,
         })
     }
@@ -282,6 +287,48 @@ mod tests {
                 description: "A new feature".into()
             })
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_max_summary_length() -> Result<(), Box<dyn Error>> {
+        // Test default (None)
+        let config = Config::new(None)?;
+        assert_eq!(config.max_summary_length, None);
+
+        // Test from config file
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "max_summary_length = 72",
+        )?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            ..Default::default()
+        }))?;
+
+        assert_eq!(config.max_summary_length, Some(72));
+
+        tempdir.close()?;
+
+        // Test from args (overrides config file)
+        let tempdir = tempfile::tempdir()?;
+        std::fs::write(
+            tempdir.path().join(".koji.toml"),
+            "max_summary_length = 72",
+        )?;
+
+        let config = Config::new(Some(ConfigArgs {
+            _current_dir: Some(tempdir.path().to_path_buf()),
+            max_summary_length: Some(50),
+            ..Default::default()
+        }))?;
+
+        assert_eq!(config.max_summary_length, Some(50));
+
+        tempdir.close()?;
 
         Ok(())
     }
