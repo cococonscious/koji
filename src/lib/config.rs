@@ -299,10 +299,7 @@ mod tests {
 
         // Test from config file
         let tempdir = tempfile::tempdir()?;
-        std::fs::write(
-            tempdir.path().join(".koji.toml"),
-            "max_summary_length = 72",
-        )?;
+        std::fs::write(tempdir.path().join(".koji.toml"), "max_summary_length = 72")?;
 
         let config = Config::new(Some(ConfigArgs {
             _current_dir: Some(tempdir.path().to_path_buf()),
@@ -315,10 +312,7 @@ mod tests {
 
         // Test from args (overrides config file)
         let tempdir = tempfile::tempdir()?;
-        std::fs::write(
-            tempdir.path().join(".koji.toml"),
-            "max_summary_length = 72",
-        )?;
+        std::fs::write(tempdir.path().join(".koji.toml"), "max_summary_length = 72")?;
 
         let config = Config::new(Some(ConfigArgs {
             _current_dir: Some(tempdir.path().to_path_buf()),

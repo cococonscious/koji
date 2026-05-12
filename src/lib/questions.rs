@@ -54,7 +54,10 @@ fn format_commit_type_choice(
     format!("{name}:{emoji:>width$}{description}")
 }
 
-fn validate_summary_with_max_length(input: &str, max_length: Option<usize>) -> Result<Validation, CustomUserError> {
+fn validate_summary_with_max_length(
+    input: &str,
+    max_length: Option<usize>,
+) -> Result<Validation, CustomUserError> {
     if input.trim().is_empty() {
         return Ok(Validation::Invalid("A summary is required".into()));
     }
@@ -62,7 +65,12 @@ fn validate_summary_with_max_length(input: &str, max_length: Option<usize>) -> R
     if let Some(max_len) = max_length {
         if input.chars().count() > max_len {
             return Ok(Validation::Invalid(
-                format!("Summary must be {} characters or less (current: {})", max_len, input.chars().count()).into()
+                format!(
+                    "Summary must be {} characters or less (current: {})",
+                    max_len,
+                    input.chars().count()
+                )
+                .into(),
             ));
         }
     }
