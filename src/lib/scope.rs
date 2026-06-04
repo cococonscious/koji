@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use gix::bstr::ByteSlice;
 use gix::diff::index::ChangeRef;
 use gix::Repository;
-use globset::{Glob, GlobMatcher};
 use indexmap::IndexSet;
 use regex::Regex;
 use std::collections::HashMap;
@@ -32,58 +31,96 @@ struct CompiledAstGrepRules {
     ids_to_scope: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
-enum PathPatternMatcher {
-    Regex(Regex),
-    Glob(GlobMatcher),
-}
-
-impl PathPatternMatcher {
-    fn new(pattern: &str) -> Result<Self> {
-        if looks_like_regex(pattern) {
-            let regex = Regex::new(pattern)
-                .with_context(|| format!("invalid scope path regex `{pattern}`"))?;
-            return Ok(Self::Regex(regex));
+impl Config {
+    pub fn validate_scope_patterns(&self) -> Result<()> {
+        for (scope_name, scope) in &self.commit_scopes {
+            if let Some(patterns) = &scope.patterns {
+                for pattern in patterns.iter() {
+                    Regex::new(pattern).with_context(|| {
+                        format!("invalid scope path regex for `{scope_name}`: `{pattern}`")
+                    })?;
+                }
+            }
         }
-
-        let glob_pattern = pattern.strip_prefix('/').unwrap_or(pattern);
-        let glob = Glob::new(glob_pattern)
-            .with_context(|| format!("invalid scope path pattern `{pattern}`"))?
-            .compile_matcher();
-
-        Ok(Self::Glob(glob))
+        Ok(())
     }
 
-    fn is_match(&self, path: &str) -> bool {
-        match self {
-            Self::Regex(regex) => regex.is_match(path),
-            Self::Glob(glob) => glob.is_match(path.strip_prefix('/').unwrap_or(path)),
+    pub fn validate_ast_grep_rules(&self) -> Result<()> {
+        self.compile_ast_grep_rules().map(|_| ())
+    }
+
+    fn compile_ast_grep_rules(&self) -> Result<CompiledAstGrepRules> {
+        let globals = GlobalRules::default();
+        let mut ids_to_scope = HashMap::new();
+        let mut compiled_rules = Vec::new();
+
+        for (index, (scope_name, scope)) in self.commit_scopes.iter().enumerate() {
+            let Some(ast_grep) = &scope.ast_grep else {
+                continue;
+            };
+            let mut serializable = ast_grep.clone();
+            let id = if serializable.id.is_empty() {
+                format!("{index:04}-{scope_name}")
+            } else {
+                format!("{index:04}-{}", serializable.id)
+            };
+
+            serializable.id = id.clone();
+            ids_to_scope.insert(id, scope_name.clone());
+            compiled_rules.push(RuleConfig::try_from(serializable, &globals)?);
         }
+
+        Ok(CompiledAstGrepRules {
+            rules: RuleCollection::try_new(compiled_rules)?,
+            ids_to_scope,
+        })
     }
 }
 
-fn looks_like_regex(pattern: &str) -> bool {
-    pattern.starts_with('^')
-        || pattern.ends_with('$')
-        || pattern.contains('\\')
-        || pattern.contains('(')
-        || pattern.contains('|')
-        || pattern.contains('+')
-}
+/// Stage all tracked modified/deleted files so
+/// that scope detection sees the full, entire diff when `--all` is passed.
+pub fn stage_tracked_changes(repo: &Repository) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .context("repository has no working directory")?;
 
-pub fn validate_scope_patterns(config: &Config) -> Result<()> {
-    for (scope, patterns) in &config.scope_patterns {
-        for pattern in patterns.iter() {
-            PathPatternMatcher::new(pattern)
-                .with_context(|| format!("invalid scope path pattern for `{scope}`"))?;
+    let mut index = repo.open_index().context("could not open index")?;
+
+    let (entries, backing) = index.entries_mut_and_pathbacking();
+    for entry in entries.iter_mut() {
+        let path = entry.path_in(backing);
+        let full_path = workdir.join(gix::path::from_bstr(path));
+
+        match gix::index::fs::Metadata::from_path_no_follow(&full_path) {
+            Err(_) => {
+                // File has left the worktree mark for removal.
+                entry.flags.insert(gix::index::entry::Flags::REMOVE);
+            }
+            Ok(meta) => {
+                let new_stat =
+                    gix::index::entry::Stat::from_fs(&meta).context("could not read file stat")?;
+                // Only re-hash if mtime or size changed.
+                if new_stat.mtime.secs != entry.stat.mtime.secs || new_stat.size != entry.stat.size
+                {
+                    let content = std::fs::read(&full_path)
+                        .with_context(|| format!("could not read `{}`", full_path.display()))?;
+                    let oid = repo
+                        .write_blob(&content)
+                        .context("could not write blob")?
+                        .detach();
+                    entry.id = oid;
+                    entry.stat = new_stat;
+                }
+            }
         }
     }
+
+    index.remove_entries(|_, _, e| e.flags.contains(gix::index::entry::Flags::REMOVE));
+    index
+        .write(gix::index::write::Options::default())
+        .context("could not write index")?;
 
     Ok(())
-}
-
-pub fn validate_ast_grep_rules(config: &Config) -> Result<()> {
-    compile_ast_grep_rules(config).map(|_| ())
 }
 
 pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeMatches> {
@@ -97,16 +134,18 @@ pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeM
     for relative_path in &changed_paths {
         let normalized_path = normalize_relative_path(relative_path);
 
-        for (scope, patterns) in &config.scope_patterns {
-            let is_match = patterns
-                .iter()
-                .map(PathPatternMatcher::new)
-                .collect::<Result<Vec<_>>>()?
-                .iter()
-                .any(|matcher| matcher.is_match(&normalized_path));
+        for (scope_name, scope) in &config.commit_scopes {
+            if let Some(patterns) = &scope.patterns {
+                let is_match = patterns
+                    .iter()
+                    .map(|p| Regex::new(p))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .iter()
+                    .any(|re| re.is_match(&normalized_path));
 
-            if is_match {
-                matched_scopes.insert(scope.clone());
+                if is_match {
+                    matched_scopes.insert(scope_name.clone());
+                }
             }
         }
     }
@@ -171,42 +210,16 @@ fn normalize_relative_path(path: &Path) -> String {
     }
 }
 
-fn compile_ast_grep_rules(config: &Config) -> Result<CompiledAstGrepRules> {
-    let capacity = config.scope_ast_grep.len();
-
-    let globals = GlobalRules::default();
-    let mut ids_to_scope = HashMap::new();
-    let mut compiled_rules = Vec::with_capacity(capacity);
-
-    for (index, rule) in config.scope_ast_grep.iter().enumerate() {
-        let mut serializable = rule.rule.clone();
-        let id = if serializable.id.is_empty() {
-            format!("{index:04}-{}", rule.scope)
-        } else {
-            format!("{index:04}-{}", serializable.id)
-        };
-
-        serializable.id = id.clone();
-        ids_to_scope.insert(id, rule.scope.clone());
-        compiled_rules.push(RuleConfig::try_from(serializable, &globals)?);
-    }
-
-    Ok(CompiledAstGrepRules {
-        rules: RuleCollection::try_new(compiled_rules)?,
-        ids_to_scope,
-    })
-}
-
 fn detect_ast_grep_scopes(
     config: &Config,
     workdir: &Path,
     changed_paths: &[PathBuf],
 ) -> Result<Vec<String>> {
-    if config.scope_ast_grep.is_empty() {
+    if config.commit_scopes.values().all(|s| s.ast_grep.is_none()) {
         return Ok(Vec::new());
     }
 
-    let compiled_rules = compile_ast_grep_rules(config)?;
+    let compiled_rules = config.compile_ast_grep_rules()?;
 
     let mut matched_scopes = IndexSet::new();
 
@@ -250,11 +263,9 @@ mod tests {
             emoji: false,
             issues: false,
             sign: false,
-            force_scope: false,
+            force_config_scopes: false,
             allow_empty_scope: true,
             workdir,
-            scope_patterns: IndexMap::new(),
-            scope_ast_grep: Vec::new(),
         }
     }
 
@@ -271,15 +282,23 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_scope_patterns_with_glob_fallback() -> Result<(), Box<dyn Error>> {
+    fn test_validate_scope_patterns() -> Result<(), Box<dyn Error>> {
         let tempdir = tempfile::tempdir()?;
         let mut config = empty_config(tempdir.path().to_path_buf());
-        config.scope_patterns.insert(
+        config.commit_scopes.insert(
             "core".into(),
-            ScopePatternValue::Many(vec!["/crates/core/**/*.rs".into(), "^/src/.*\\.rs$".into()]),
+            CommitScope {
+                name: "core".into(),
+                description: None,
+                patterns: Some(ScopePatternValue::Many(vec![
+                    "^/crates/core/.*\\.rs$".into(),
+                    "^/src/.*\\.rs$".into(),
+                ])),
+                ast_grep: None,
+            },
         );
 
-        validate_scope_patterns(&config)?;
+        config.validate_scope_patterns()?;
 
         tempdir.close()?;
         Ok(())
@@ -314,11 +333,9 @@ mod tests {
             CommitScope {
                 name: "core".into(),
                 description: None,
+                patterns: Some(ScopePatternValue::One("^/crates/core/.*\\.rs$".into())),
+                ast_grep: None,
             },
-        );
-        config.scope_patterns.insert(
-            "core".into(),
-            ScopePatternValue::One("/crates/core/**/*.rs".into()),
         );
 
         let matches = detect_scope_matches(&gix_repo, &config)?;
@@ -345,29 +362,34 @@ mod tests {
         index.write()?;
 
         let mut config = empty_config(tempdir.path().to_path_buf());
-        config.scope_ast_grep.push(crate::config::ScopeAstGrepRule {
-            scope: "test".into(),
-            rule: ast_grep_config::SerializableRuleConfig {
-                core: ast_grep_config::SerializableRuleCore {
-                    rule: ast_grep_config::from_str("pattern: fn $NAME() {}")?,
-                    constraints: None,
-                    transform: None,
-                    utils: None,
-                    fix: None,
-                },
-                id: String::new(),
-                language: SupportLang::Rust,
-                rewriters: None,
-                message: String::new(),
-                note: None,
-                severity: ast_grep_config::Severity::Hint,
-                labels: None,
-                files: None,
-                ignores: None,
-                url: None,
-                metadata: None,
+        config.commit_scopes.insert(
+            "test".into(),
+            CommitScope {
+                name: "test".into(),
+                description: None,
+                patterns: None,
+                ast_grep: Some(ast_grep_config::SerializableRuleConfig {
+                    core: ast_grep_config::SerializableRuleCore {
+                        rule: ast_grep_config::from_str("pattern: fn $NAME() {}")?,
+                        constraints: None,
+                        transform: None,
+                        utils: None,
+                        fix: None,
+                    },
+                    id: String::new(),
+                    language: SupportLang::Rust,
+                    rewriters: None,
+                    message: String::new(),
+                    note: None,
+                    severity: ast_grep_config::Severity::Hint,
+                    labels: None,
+                    files: None,
+                    ignores: None,
+                    url: None,
+                    metadata: None,
+                }),
             },
-        });
+        );
 
         let matches = detect_scope_matches(&gix_repo, &config)?;
         assert_eq!(matches.suggested(), Some("test".into()));

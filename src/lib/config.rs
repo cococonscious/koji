@@ -18,7 +18,7 @@ pub struct Config {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
-    pub force_scope: bool,
+    pub force_config_scopes: bool,
     pub allow_empty_scope: bool,
     pub workdir: PathBuf,
 }
@@ -37,7 +37,7 @@ pub struct CommitScope {
     pub name: String,
     pub description: Option<String>,
 
-    /// Glob or regex patterns matched against staged file paths (prefixed with `/`).
+    /// Regex patterns matched against staged file paths (prefixed with `/`).
     #[serde(default)]
     pub patterns: Option<ScopePatternValue>,
 
@@ -180,14 +180,14 @@ impl Config {
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
-            force_scope: force_scope.unwrap_or(config.force_scope),
+            force_config_scopes: force_scope.unwrap_or(config.force_scope),
             allow_empty_scope: allow_empty_scope.unwrap_or(config.allow_empty_scope),
             workdir,
         };
 
-        crate::scope::validate_scope_patterns(&config)?;
+        config.validate_scope_patterns()?;
         #[cfg(feature = "ast-grep")]
-        crate::scope::validate_ast_grep_rules(&config)?;
+        config.validate_ast_grep_rules()?;
 
         Ok(config)
     }

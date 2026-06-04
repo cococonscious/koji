@@ -824,7 +824,7 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
         emoji: false,
         issues: false,
         sign: false,
-        force_scope: false,
+        force_config_scopes: false,
         allow_empty_scope: true,
     };
 
@@ -855,13 +855,13 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[cfg(not(target_os = "windows"))]
-fn test_force_scope_integration() -> Result<(), Box<dyn Error>> {
+fn test_force_config_scopes_integration() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
     let config_temp_dir = setup_config_home()?;
 
     fs::write(
         temp_dir.path().join(".koji.toml"),
-        "force_scope = true\n[[commit_scopes]]\nname = \"app\"",
+        "force_config_scopes = true\n[[commit_scopes]]\nname = \"app\"",
     )?;
 
     fs::write(temp_dir.path().join("a.txt"), "foo")?;
