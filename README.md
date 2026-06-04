@@ -191,13 +191,13 @@ emoji = true
 issues = true
 ```
 
-#### `force_scope`
+#### `force_config_scopes`
 
 - Type: `bool`
 - Optional: `true`
 - Description: When `true`, the scope prompt becomes a selection list restricted to the configured `commit_scopes`. If a single scope is auto-detected from staged changes it is pre-selected automatically.
 ```toml
-force_scope = true
+force_config_scopes = true
 ```
 
 #### `allow_empty_scope`

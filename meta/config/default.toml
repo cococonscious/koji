@@ -3,7 +3,7 @@ breaking_changes = true
 issues = true
 emoji = false
 sign = false
-force_scope = false
+force_config_scopes = false
 allow_empty_scope = true
 
 [[commit_types]]
