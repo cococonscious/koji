@@ -163,15 +163,48 @@ impl ScopeAutocompleter {
         }
         scopes
     }
+
+    /// Returns scope suggestions formatted with descriptions for configured scopes.
+    /// History-only scopes are returned as plain names so users can tell them apart.
+    fn get_suggestions_with_descriptions(&self) -> Vec<String> {
+        let config_scope_names: std::collections::HashSet<_> =
+            self.config.commit_scopes.keys().cloned().collect();
+
+        let mut suggestions: Vec<String> = self
+            .config
+            .commit_scopes
+            .values()
+            .map(|scope| {
+                if let Some(desc) = &scope.description {
+                    format!("{}: {}", scope.name, desc)
+                } else {
+                    scope.name.clone()
+                }
+            })
+            .collect();
+
+        // append the history scopes that aren't already in config
+        let history = self.get_existing_scopes().unwrap_or_default();
+        for scope in history {
+            if !config_scope_names.contains(&scope) {
+                suggestions.push(scope);
+            }
+        }
+
+        suggestions
+    }
 }
 
 impl Autocomplete for ScopeAutocompleter {
     fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        let all_scopes = self.get_all_scopes();
-        Ok(all_scopes
-            .iter()
-            .filter(|s| s.contains(input))
-            .cloned()
+        Ok(self
+            .get_suggestions_with_descriptions()
+            .into_iter()
+            .filter(|s| {
+                // Match against the name portion before any ':'
+                let name = s.split(':').next().unwrap_or(s).trim();
+                name.contains(input) || s.contains(input)
+            })
             .collect())
     }
 
@@ -181,7 +214,8 @@ impl Autocomplete for ScopeAutocompleter {
         _input: &str,
         highlighted_suggestion: Option<String>,
     ) -> Result<Replacement, CustomUserError> {
-        Ok(highlighted_suggestion)
+        // Strip description from the suggestion so the input receives only the scope name
+        Ok(highlighted_suggestion.map(|s| s.split(':').next().unwrap_or(&s).trim().to_string()))
     }
 }
 
@@ -214,6 +248,8 @@ fn get_force_scope_values(config: &Config, scope_matches: &ScopeMatches) -> Vec<
 fn prompt_scope(config: &Config, scope_matches: &ScopeMatches) -> Result<Option<String>> {
     if config.force_scope && !config.commit_scopes.is_empty() {
         if let Some(scope) = scope_matches.suggested() {
+            // Print the auto-selected scope so it remains visible in the terminal output
+            eprintln!("? What's the scope of this change? {scope}");
             return Ok(Some(scope));
         }
 
@@ -291,6 +327,15 @@ fn prompt_scope(config: &Config, scope_matches: &ScopeMatches) -> Result<Option<
                 Ok(Validation::Valid)
             }
         });
+    }
+
+    // When a scope is required and nothing is auto-detected, use prompt() so that
+    // pressing <Esc> raises a cancellation error rather than silently skipping.
+    if !config.allow_empty_scope && detected_scope.is_none() {
+        let scope = selected_scope
+            .prompt()
+            .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?;
+        return Ok(Some(scope));
     }
 
     match selected_scope
