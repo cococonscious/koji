@@ -2271,7 +2271,6 @@ dependencies = [
  "emojis",
  "git2",
  "gix",
- "globset",
  "indexmap",
  "inquire",
  "predicates",
