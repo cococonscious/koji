@@ -6,8 +6,8 @@ authors = [
   "Finley Thomalla <finley@thomalla.ch>",
   "Danny Tatom <its.danny@hey.com>",
 ]
-documentation = "https://docs.rs/koji"
 description = "An interactive CLI for creating conventional commits."
+documentation = "https://docs.rs/koji"
 repository = "https://github.com/cococonscious/koji"
 license = "MIT"
 
@@ -18,6 +18,10 @@ path = "src/bin/main.rs"
 [lib]
 name = "koji"
 path = "src/lib/lib.rs"
+
+[features]
+default = ["ast-grep"]
+ast-grep = ["dep:ast-grep-config", "dep:ast-grep-language"]
 
 [dependencies]
 anyhow = "1.0"
@@ -36,8 +40,8 @@ clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
 gix = "0.80.0"
-ast-grep-config = { version = "0.42.1" }
-ast-grep-language = { version = "0.42.1" }
+ast-grep-config = { version = "0.42.1", optional = true }
+ast-grep-language = { version = "0.42.1", optional = true }
 
 [dev-dependencies]
 git2 = "0.20.4"
