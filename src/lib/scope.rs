@@ -20,7 +20,13 @@ pub struct ScopeMatches {
 impl ScopeMatches {
     pub fn suggested(&self) -> Option<String> {
         match self.matches.as_slice() {
-            [scope] => Some(scope.clone()),
+            [first, rest @ ..] => {
+                // Warn the user that they have multiple matches (bad)
+                if rest.len() >= 1 {
+                    eprintln!("More than one match was found. First: {first:?} Extra: {rest:?}");
+                }
+                Some(first.clone())
+            }
             _ => None,
         }
     }

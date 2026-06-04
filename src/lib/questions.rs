@@ -227,7 +227,12 @@ fn format_scope_display(scope: &crate::config::CommitScope) -> String {
 }
 
 fn scope_name_from_display(display: &str) -> String {
-    display.split(':').next().unwrap_or(display).trim().to_string()
+    display
+        .split(':')
+        .next()
+        .unwrap_or(display)
+        .trim()
+        .to_string()
 }
 
 impl Config {
@@ -256,16 +261,17 @@ impl Config {
     }
 
     fn prompt_scope_select(&self, scope_matches: &ScopeMatches) -> Result<Option<String>> {
-        let scope_values = self.scope_values_ordered(scope_matches);
-        let has_suggestion = scope_matches.suggested().is_some();
+        // If we're able to match then... yay!
+        // Only valid if ONE scope was matched.
+        if let Some(scope) = scope_matches.suggested() {
+            return Ok(Some(scope));
+        }
 
-        let mut prompt = Select::new("What's the scope of this change?", scope_values)
+        // Otherwise fallback with user selection
+        let scope_values = self.scope_values_ordered(scope_matches);
+        let prompt = Select::new("What's the scope of this change?", scope_values)
             .with_render_config(get_render_config())
             .with_formatter(&|v| scope_name_from_display(v.value));
-
-        if has_suggestion {
-            prompt = prompt.with_starting_cursor(0);
-        }
 
         let result = if self.allow_empty_scope {
             prompt
@@ -283,17 +289,37 @@ impl Config {
     }
 
     fn prompt_scope_text(&self, scope_matches: &ScopeMatches) -> Result<Option<String>> {
-        let mut autocompleter = ScopeAutocompleter { config: self.clone() };
+        let mut autocompleter = ScopeAutocompleter {
+            config: self.clone(),
+        };
         let detected = scope_matches.suggested();
         let has_completions = self.autocomplete
-            && !autocompleter.get_suggestions("").unwrap_or_default().is_empty();
+            && !autocompleter
+                .get_suggestions("")
+                .unwrap_or_default()
+                .is_empty();
 
-        let help = match (has_completions, detected.as_deref(), scope_matches.matches.len()) {
-            (true, Some(s), _) => format!("↑↓ to move, tab to autocomplete, enter to use `{s}`, {}", get_skip_hint()),
-            (true, None, n) if n > 1 => format!("↑↓ to move, tab to autocomplete, matched: {}, {}", scope_matches.matches.join(", "), get_skip_hint()),
+        let help = match (
+            has_completions,
+            detected.as_deref(),
+            scope_matches.matches.len(),
+        ) {
+            (true, Some(s), _) => format!(
+                "↑↓ to move, tab to autocomplete, enter to use `{s}`, {}",
+                get_skip_hint()
+            ),
+            (true, None, n) if n > 1 => format!(
+                "↑↓ to move, tab to autocomplete, matched: {}, {}",
+                scope_matches.matches.join(", "),
+                get_skip_hint()
+            ),
             (true, None, _) => format!("↑↓ to move, tab to autocomplete, {}", get_skip_hint()),
             (false, Some(s), _) => format!("enter to use `{s}`, {}", get_skip_hint()),
-            (false, None, n) if n > 1 => format!("matched: {}, {}", scope_matches.matches.join(", "), get_skip_hint()),
+            (false, None, n) if n > 1 => format!(
+                "matched: {}, {}",
+                scope_matches.matches.join(", "),
+                get_skip_hint()
+            ),
             _ => get_skip_hint().to_string(),
         };
 
@@ -303,6 +329,10 @@ impl Config {
                 ..get_render_config()
             })
             .with_help_message(&help);
+
+        if let Some(ref scope) = detected {
+            text = text.with_initial_value(scope);
+        }
 
         if self.autocomplete {
             text = text.with_autocomplete(autocompleter);
@@ -330,7 +360,7 @@ impl Config {
             .prompt_skippable()
             .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
         {
-            Some(s) if s.is_empty() => Ok(detected),
+            Some(s) if s.is_empty() => Ok(None),
             result => Ok(result),
         }
     }
