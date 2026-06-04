@@ -191,27 +191,54 @@ emoji = true
 issues = true
 ```
 
-#### `scope-patterns`
+#### `force_scope`
 
-- Type: `table`
+- Type: `bool`
 - Optional: `true`
-- Description: Pre-assign commit scopes from staged paths. Patterns are matched against repo-relative paths prefixed with `/`, and each entry can be a single regex/glob string or a list of patterns.
+- Description: When `true`, the scope prompt becomes a selection list restricted to the configured `commit_scopes`. If a single scope is auto-detected from staged changes it is pre-selected automatically.
 ```toml
-[scope_patterns]
-flakes = "/flake\\.nix$"
-core = "/crates/core/**/*.rs"
-build = ["^/build\\.rs$", "/justfile"]
+force_scope = true
 ```
 
-#### Ast-grep Scope Config
+#### `allow_empty_scope`
 
-- Location: In the normal Koji config file alongside the rest of the scope config
+- Type: `bool`
 - Optional: `true`
-- Description: Ast-grep rules can pre-assign commit scopes from structural code matches.
+- Description: When `false`, a scope is required and cannot be left blank. Pressing `<esc>` without a detected scope will abort the commit. Defaults to `true`.
 ```toml
-[[scope_ast_grep]]
-scope = "test"
+allow_empty_scope = false
+```
+
+#### `commit_scopes`
+
+- Type: `Vec<CommitScope>`
+- Optional: `true`
+- Description: A list of named commit scopes. Each scope can carry a human-readable `description` (For CLI use), path `patterns` for automatic detection, and an `ast_grep` rule for content-based detection.
+
+*For automatically assigning scopes based on the context of the change*
+
+```toml
+[[commit_scopes]]
+name = "core"
+description = "Changes to the core library"
+patterns = "/crates/core/**/*.rs"
+
+[[commit_scopes]]
+name = "build"
+patterns = ["^/build\\.rs$", "/justfile"]
+
+[[commit_scopes]]
+name = "test"
+description = "Test-only changes"
+patterns = "/tests/**"
+
+# In reference the above scope \/ (TOML is weird)
+[commit_scopes.ast_grep]
 language = "Rust"
 files = ["**/*.rs"]
 rule = { kind = "function_item", has = { stopBy = "end", pattern = "#[test]" } }
 ```
+
+**`patterns`** -- one or more regex strings matched against staged file paths (prefixed with `/`).
+
+**`ast_grep`** -- an [ast-grep](https://ast-grep.github.io/) rule. When any staged file matches both the `files` filter and the structural rule, this scope is pre-assigned. Requires the `ast-grep` feature (included by default). As a warning: the rule is read from the **staged blob only **.

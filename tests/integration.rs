@@ -809,6 +809,9 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
         CommitScope {
             name: "frontend".into(),
             description: Some("Frontend code".into()),
+            patterns: None,
+            #[cfg(feature = "ast-grep")]
+            ast_grep: None,
         },
     );
 
@@ -823,8 +826,6 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
         sign: false,
         force_scope: false,
         allow_empty_scope: true,
-        scope_patterns: IndexMap::new(),
-        scope_ast_grep: Vec::new(),
     };
 
     let mut autocompleter = ScopeAutocompleter { config };
@@ -846,7 +847,8 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
     let suggestions = autocompleter
         .get_suggestions("front")
         .expect("Failed to get suggestions");
-    assert!(suggestions.contains(&"frontend".to_string()));
+    // "frontend" has a description, so the suggestion is formatted as "frontend: Frontend code"
+    assert!(suggestions.iter().any(|s| s.starts_with("frontend")));
 
     Ok(())
 }
@@ -969,7 +971,7 @@ fn test_scope_pattern_auto_assigns_scope() -> Result<(), Box<dyn Error>> {
 
     fs::write(
         temp_dir.path().join(".koji.toml"),
-        "[scope_patterns]\nconfig = \"/config\\\\.json$\"",
+        "[[commit_scopes]]\nname = \"config\"\npatterns = \"/config\\\\.json$\"",
     )?;
     fs::write(temp_dir.path().join("config.json"), "abc")?;
     git_add(&repo, ".")?;
@@ -1025,7 +1027,7 @@ fn test_detect_scope_matches_from_scope_patterns() -> Result<(), Box<dyn Error>>
     git_add(&repo, ".")?;
     fs::write(
         temp_dir.path().join(".koji.toml"),
-        "[scope_patterns]\nconfig = \"/config\\\\.json$\"",
+        "[[commit_scopes]]\nname = \"config\"\npatterns = \"/config\\\\.json$\"",
     )?;
 
     let config = Config::new(Some(koji::config::ConfigArgs {
