@@ -94,7 +94,7 @@ struct ConfigTOML {
     pub emoji: bool,
     pub issues: bool,
     pub sign: bool,
-    pub force_scope: bool,
+    pub force_config_scopes: bool,
     pub allow_empty_scope: bool,
 }
 
@@ -180,7 +180,7 @@ impl Config {
             emoji: emoji.unwrap_or(config.emoji),
             issues: issues.unwrap_or(config.issues),
             sign: sign.unwrap_or(config.sign),
-            force_config_scopes: force_scope.unwrap_or(config.force_scope),
+            force_config_scopes: force_scope.unwrap_or(config.force_config_scopes),
             allow_empty_scope: allow_empty_scope.unwrap_or(config.allow_empty_scope),
             workdir,
         };

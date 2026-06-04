@@ -22,7 +22,7 @@ impl ScopeMatches {
         match self.matches.as_slice() {
             [first, rest @ ..] => {
                 // Warn the user that they have multiple matches (bad)
-                if rest.len() >= 1 {
+                if !rest.is_empty() {
                     eprintln!("More than one match was found. First: {first:?} Extra: {rest:?}");
                 }
                 Some(first.clone())
@@ -144,7 +144,7 @@ pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeM
             if let Some(patterns) = &scope.patterns {
                 let is_match = patterns
                     .iter()
-                    .map(|p| Regex::new(p))
+                    .map(Regex::new)
                     .collect::<Result<Vec<_>, _>>()?
                     .iter()
                     .any(|re| re.is_match(&normalized_path));
