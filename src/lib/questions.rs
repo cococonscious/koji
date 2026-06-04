@@ -219,133 +219,120 @@ impl Autocomplete for ScopeAutocompleter {
     }
 }
 
-fn format_scope_value(scope: &crate::config::CommitScope) -> String {
-    if let Some(desc) = &scope.description {
-        format!("{}: {}", scope.name, desc)
-    } else {
-        scope.name.clone()
+fn format_scope_display(scope: &crate::config::CommitScope) -> String {
+    match &scope.description {
+        Some(desc) => format!("{}: {}", scope.name, desc),
+        None => scope.name.clone(),
     }
+}
+
+fn scope_name_from_display(display: &str) -> String {
+    display.split(':').next().unwrap_or(display).trim().to_string()
 }
 
 impl Config {
     fn scope_values_ordered(&self, scope_matches: &ScopeMatches) -> Vec<String> {
-        let mut scope_values = Vec::new();
+        let matched: Vec<_> = scope_matches
+            .matches
+            .iter()
+            .filter_map(|name| self.commit_scopes.get(name))
+            .map(format_scope_display)
+            .collect();
 
-        for matched_scope in &scope_matches.matches {
-            if let Some(scope) = self.commit_scopes.get(matched_scope) {
-                scope_values.push(format_scope_value(scope));
-            }
-        }
+        let rest = self
+            .commit_scopes
+            .values()
+            .filter(|s| !scope_matches.matches.contains(&s.name))
+            .map(format_scope_display);
 
-        for scope in self.commit_scopes.values() {
-            if !scope_matches.matches.contains(&scope.name) {
-                scope_values.push(format_scope_value(scope));
-            }
-        }
-
-        scope_values
+        matched.into_iter().chain(rest).collect()
     }
 
     fn prompt_scope(&self, scope_matches: &ScopeMatches) -> Result<Option<String>> {
         if self.force_config_scopes && !self.commit_scopes.is_empty() {
-            if let Some(scope) = scope_matches.suggested() {
-                // Print the auto-selected scope so it remains visible in the terminal output
-                eprintln!("? What's the scope of this change? {scope}");
-                return Ok(Some(scope));
-            }
+            return self.prompt_scope_select(scope_matches);
+        }
+        self.prompt_scope_text(scope_matches)
+    }
 
-            let scope_values = self.scope_values_ordered(scope_matches);
+    fn prompt_scope_select(&self, scope_matches: &ScopeMatches) -> Result<Option<String>> {
+        let scope_values = self.scope_values_ordered(scope_matches);
+        let has_suggestion = scope_matches.suggested().is_some();
 
-            let prompt = Select::new("What's the scope of this change?", scope_values)
-                .with_render_config(get_render_config())
-                .with_formatter(&|v| v.value.split(':').next().unwrap().trim().to_string());
+        let mut prompt = Select::new("What's the scope of this change?", scope_values)
+            .with_render_config(get_render_config())
+            .with_formatter(&|v| scope_name_from_display(v.value));
 
-            let result = if self.allow_empty_scope {
+        if has_suggestion {
+            prompt = prompt.with_starting_cursor(0);
+        }
+
+        let result = if self.allow_empty_scope {
+            prompt
+                .prompt_skippable()
+                .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
+        } else {
+            Some(
                 prompt
-                    .prompt_skippable()
-                    .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
-            } else {
-                Some(
-                    prompt
-                        .prompt()
-                        .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?,
-                )
-            };
-
-            return Ok(result.map(|s| s.split(':').next().unwrap().trim().to_string()));
-        }
-
-    let mut scope_autocompleter = ScopeAutocompleter {
-        config: self.clone(),
-    };
-    let detected_scope = scope_matches.suggested();
-    let help_message = match (
-        self.autocomplete && !scope_autocompleter.get_suggestions("").unwrap().is_empty(),
-        detected_scope.as_ref(),
-        scope_matches.matches.len(),
-    ) {
-        (true, Some(scope), _) => {
-            format!("↑↓ to move, tab to autocomplete, enter to use `{scope}`, <esc> to skip")
-        }
-        (true, None, count) if count > 1 => format!(
-            "↑↓ to move, tab to autocomplete, matched scopes: {}, {}",
-            scope_matches.matches.join(", "),
-            get_skip_hint()
-        ),
-        (true, None, _) => format!(
-            "{}, {}",
-            "↑↓ to move, tab to autocomplete, enter to submit",
-            get_skip_hint()
-        ),
-        (false, Some(scope), _) => format!("enter to use `{scope}`, <esc> to skip"),
-        (false, None, count) if count > 1 => {
-            format!(
-                "matched scopes: {}, {}",
-                scope_matches.matches.join(", "),
-                get_skip_hint()
+                    .prompt()
+                    .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?,
             )
+        };
+
+        Ok(result.map(|s| scope_name_from_display(&s)))
+    }
+
+    fn prompt_scope_text(&self, scope_matches: &ScopeMatches) -> Result<Option<String>> {
+        let mut autocompleter = ScopeAutocompleter { config: self.clone() };
+        let detected = scope_matches.suggested();
+        let has_completions = self.autocomplete
+            && !autocompleter.get_suggestions("").unwrap_or_default().is_empty();
+
+        let help = match (has_completions, detected.as_deref(), scope_matches.matches.len()) {
+            (true, Some(s), _) => format!("↑↓ to move, tab to autocomplete, enter to use `{s}`, {}", get_skip_hint()),
+            (true, None, n) if n > 1 => format!("↑↓ to move, tab to autocomplete, matched: {}, {}", scope_matches.matches.join(", "), get_skip_hint()),
+            (true, None, _) => format!("↑↓ to move, tab to autocomplete, {}", get_skip_hint()),
+            (false, Some(s), _) => format!("enter to use `{s}`, {}", get_skip_hint()),
+            (false, None, n) if n > 1 => format!("matched: {}, {}", scope_matches.matches.join(", "), get_skip_hint()),
+            _ => get_skip_hint().to_string(),
+        };
+
+        let mut text = Text::new("What's the scope of this change?")
+            .with_render_config(RenderConfig {
+                option: StyleSheet::new().with_fg(Color::Grey),
+                ..get_render_config()
+            })
+            .with_help_message(&help);
+
+        if self.autocomplete {
+            text = text.with_autocomplete(autocompleter);
         }
-        _ => get_skip_hint().to_string(),
-    };
 
-    let mut selected_scope = Text::new("What's the scope of this change?")
-        .with_render_config(RenderConfig {
-            option: StyleSheet::new().with_fg(Color::Grey),
-            ..get_render_config()
-        })
-        .with_help_message(help_message.as_str());
+        if !self.allow_empty_scope {
+            let has_detected = detected.is_some();
+            text = text.with_validator(move |input: &str| {
+                if input.trim().is_empty() && !has_detected {
+                    Ok(Validation::Invalid("A scope is required".into()))
+                } else {
+                    Ok(Validation::Valid)
+                }
+            });
+        }
 
-    if self.autocomplete {
-        selected_scope = selected_scope.with_autocomplete(scope_autocompleter);
-    }
+        if !self.allow_empty_scope && detected.is_none() {
+            return Ok(Some(
+                text.prompt()
+                    .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?,
+            ));
+        }
 
-    if !self.allow_empty_scope {
-        let allow_detected_scope = detected_scope.is_some();
-        selected_scope = selected_scope.with_validator(move |input: &str| {
-            if input.trim().is_empty() && !allow_detected_scope {
-                Ok(Validation::Invalid("A scope is required".into()))
-            } else {
-                Ok(Validation::Valid)
-            }
-        });
-    }
-
-    // When a scope is required and nothing is auto-detected, use prompt() so that
-    // pressing <Esc> raises a cancellation error rather than silently skipping.
-    if !self.allow_empty_scope && detected_scope.is_none() {
-        let scope = selected_scope
-            .prompt()
-            .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?;
-        return Ok(Some(scope));
-    }
-
-    match selected_scope
-        .prompt_skippable()
-        .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
-    {
-        Some(scope) if scope.is_empty() => Ok(detected_scope),
-        scope => Ok(scope),
-    }
+        match text
+            .prompt_skippable()
+            .map_err(|e| PromptError::from_inquire(e, "Scope selection"))?
+        {
+            Some(s) if s.is_empty() => Ok(detected),
+            result => Ok(result),
+        }
     }
 }
 
