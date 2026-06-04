@@ -27,6 +27,11 @@ impl ScopeMatches {
     }
 }
 
+struct CompiledAstGrepRules {
+    rules: RuleCollection<SupportLang>,
+    ids_to_scope: HashMap<String, String>,
+}
+
 #[derive(Debug, Clone)]
 enum PathPatternMatcher {
     Regex(Regex),
@@ -166,16 +171,12 @@ fn normalize_relative_path(path: &Path) -> String {
     }
 }
 
-fn compile_ast_grep_rules(
-    config: &Config,
-) -> Result<Option<(RuleCollection<SupportLang>, HashMap<String, String>)>> {
-    if config.scope_ast_grep.is_empty() {
-        return Ok(None);
-    }
+fn compile_ast_grep_rules(config: &Config) -> Result<CompiledAstGrepRules> {
+    let capacity = config.scope_ast_grep.len();
 
     let globals = GlobalRules::default();
     let mut ids_to_scope = HashMap::new();
-    let mut compiled_rules = Vec::with_capacity(config.scope_ast_grep.len());
+    let mut compiled_rules = Vec::with_capacity(capacity);
 
     for (index, rule) in config.scope_ast_grep.iter().enumerate() {
         let mut serializable = rule.rule.clone();
@@ -190,8 +191,10 @@ fn compile_ast_grep_rules(
         compiled_rules.push(RuleConfig::try_from(serializable, &globals)?);
     }
 
-    let collection = RuleCollection::try_new(compiled_rules)?;
-    Ok(Some((collection, ids_to_scope)))
+    Ok(CompiledAstGrepRules {
+        rules: RuleCollection::try_new(compiled_rules)?,
+        ids_to_scope,
+    })
 }
 
 fn detect_ast_grep_scopes(
@@ -199,14 +202,16 @@ fn detect_ast_grep_scopes(
     workdir: &Path,
     changed_paths: &[PathBuf],
 ) -> Result<Vec<String>> {
-    let Some((rules, ids_to_scope)) = compile_ast_grep_rules(config)? else {
+    if config.scope_ast_grep.is_empty() {
         return Ok(Vec::new());
-    };
+    }
+
+    let compiled_rules = compile_ast_grep_rules(config)?;
 
     let mut matched_scopes = IndexSet::new();
 
     for relative_path in changed_paths {
-        let applicable_rules = rules.for_path(relative_path);
+        let applicable_rules = compiled_rules.rules.for_path(relative_path);
         if applicable_rules.is_empty() {
             continue;
         }
@@ -219,7 +224,7 @@ fn detect_ast_grep_scopes(
         for rule in applicable_rules {
             let root = rule.language.ast_grep(&source);
             if root.root().find(&rule.matcher).is_some() {
-                if let Some(scope) = ids_to_scope.get(&rule.id) {
+                if let Some(scope) = compiled_rules.ids_to_scope.get(&rule.id) {
                     matched_scopes.insert(scope.clone());
                 }
             }
