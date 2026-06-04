@@ -21,8 +21,6 @@ pub struct Config {
     pub force_scope: bool,
     pub allow_empty_scope: bool,
     pub workdir: PathBuf,
-    pub scope_patterns: IndexMap<String, ScopePatternValue>,
-    pub scope_ast_grep: Vec<ScopeAstGrepRule>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -32,12 +30,43 @@ pub struct CommitType {
     pub name: String,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+/// A configured commit scope, optionally with path patterns and/or an AST-grep rule
+/// for automatic scope detection from staged changes.
+#[derive(Clone, Deserialize)]
 pub struct CommitScope {
     pub name: String,
     pub description: Option<String>,
+
+    /// Glob or regex patterns matched against staged file paths (prefixed with `/`).
+    #[serde(default)]
+    pub patterns: Option<ScopePatternValue>,
+
+    /// AST-grep rule that pre-assigns this scope when it matches staged file content.
+    #[cfg(feature = "ast-grep")]
+    #[serde(default)]
+    pub ast_grep: Option<ast_grep_config::SerializableRuleConfig<ast_grep_language::SupportLang>>,
 }
 
+impl PartialEq for CommitScope {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.description == other.description
+            && self.patterns == other.patterns
+    }
+}
+
+impl fmt::Debug for CommitScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CommitScope")
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .field("patterns", &self.patterns)
+            .finish_non_exhaustive()
+    }
+}
+
+/// A wrapper around the ast-grep rule config, with a manual Debug impl.
+#[cfg(feature = "ast-grep")]
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ScopePatternValue {
@@ -54,21 +83,6 @@ impl ScopePatternValue {
     }
 }
 
-#[derive(Clone, Deserialize)]
-pub struct ScopeAstGrepRule {
-    pub scope: String,
-    #[serde(flatten)]
-    pub rule: ast_grep_config::SerializableRuleConfig<ast_grep_language::SupportLang>,
-}
-
-impl fmt::Debug for ScopeAstGrepRule {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ScopeAstGrepRule")
-            .field("scope", &self.scope)
-            .finish_non_exhaustive()
-    }
-}
-
 #[derive(Clone, Debug, Deserialize)]
 struct ConfigTOML {
     pub autocomplete: bool,
@@ -82,10 +96,6 @@ struct ConfigTOML {
     pub sign: bool,
     pub force_scope: bool,
     pub allow_empty_scope: bool,
-    #[serde(default)]
-    scope_patterns: IndexMap<String, ScopePatternValue>,
-    #[serde(default)]
-    scope_ast_grep: Vec<ScopeAstGrepRule>,
 }
 
 #[derive(Default)]
@@ -130,7 +140,7 @@ impl Config {
         let mut config_dirs = vec![config_dir()];
         #[cfg(any(unix, target_os = "redox"))]
         config_dirs.push(BaseDirectories::new().get_config_home());
-        config_dirs.push(_user_config_path.clone());
+        config_dirs.push(_user_config_path);
 
         settings = config_dirs
             .into_iter()
@@ -144,7 +154,7 @@ impl Config {
         settings = settings.add_source(config::File::from(working_dir_path).required(false));
 
         // Try to get config from passed directory
-        if let Some(path) = path.clone() {
+        if let Some(path) = path {
             settings = settings.add_source(config::File::from(path).required(false));
         }
 
@@ -156,26 +166,10 @@ impl Config {
             commit_types.insert(commit_type.name.clone(), commit_type.to_owned());
         }
 
-        // Gather up commit scopes
+        // Gather up commit scopes (patterns and ast_grep are inline on each scope)
         let mut commit_scopes = IndexMap::new();
         for commit_scope in config.commit_scopes.iter() {
             commit_scopes.insert(commit_scope.name.clone(), commit_scope.to_owned());
-        }
-        for scope in config.scope_patterns.keys() {
-            commit_scopes
-                .entry(scope.clone())
-                .or_insert_with(|| CommitScope {
-                    name: scope.clone(),
-                    description: None,
-                });
-        }
-        for rule in &config.scope_ast_grep {
-            commit_scopes
-                .entry(rule.scope.clone())
-                .or_insert_with(|| CommitScope {
-                    name: rule.scope.clone(),
-                    description: None,
-                });
         }
 
         let config = Config {
@@ -189,11 +183,10 @@ impl Config {
             force_scope: force_scope.unwrap_or(config.force_scope),
             allow_empty_scope: allow_empty_scope.unwrap_or(config.allow_empty_scope),
             workdir,
-            scope_patterns: config.scope_patterns,
-            scope_ast_grep: config.scope_ast_grep,
         };
 
         crate::scope::validate_scope_patterns(&config)?;
+        #[cfg(feature = "ast-grep")]
         crate::scope::validate_ast_grep_rules(&config)?;
 
         Ok(config)
@@ -385,16 +378,13 @@ mod tests {
             ..Default::default()
         }))?;
         assert!(config.commit_scopes.get("app").is_some());
-        assert_eq!(
-            config.commit_scopes.get("app"),
-            Some(&CommitScope {
-                name: "app".into(),
-                description: Some("Application code".into())
-            })
-        );
+        let scope = config.commit_scopes.get("app").unwrap();
+        assert_eq!(scope.name, "app");
+        assert_eq!(scope.description, Some("Application code".into()));
         tempdir.close()?;
         Ok(())
     }
+
     #[test]
     fn test_commit_scopes_from_config() -> Result<(), Box<dyn Error>> {
         let tempdir_config = tempfile::tempdir()?;
@@ -418,11 +408,11 @@ mod tests {
     }
 
     #[test]
-    fn test_scope_patterns_add_scopes() -> Result<(), Box<dyn Error>> {
+    fn test_scope_patterns_inline() -> Result<(), Box<dyn Error>> {
         let tempdir = tempfile::tempdir()?;
         std::fs::write(
             tempdir.path().join(".koji.toml"),
-            "[scope_patterns]\ncore = \"/crates/core/**/*.rs\"\nbuild = [\"^/build\\\\.rs$\", \"/justfile\"]",
+            "[[commit_scopes]]\nname=\"core\"\ndescription=\"Core crate\"\npatterns = \"/crates/core/**/*.rs\"\n[[commit_scopes]]\nname=\"build\"\npatterns = [\"^/build\\\\.rs$\", \"/justfile\"]",
         )?;
 
         let config = Config::new(Some(ConfigArgs {
@@ -432,21 +422,35 @@ mod tests {
 
         assert!(config.commit_scopes.contains_key("core"));
         assert!(config.commit_scopes.contains_key("build"));
+
+        let core = config.commit_scopes.get("core").unwrap();
+        assert_eq!(core.description, Some("Core crate".into()));
         assert_eq!(
-            config.scope_patterns.get("core"),
-            Some(&ScopePatternValue::One("/crates/core/**/*.rs".into()))
+            core.patterns,
+            Some(ScopePatternValue::One("/crates/core/**/*.rs".into()))
+        );
+
+        let build = config.commit_scopes.get("build").unwrap();
+        assert_eq!(
+            build.patterns,
+            Some(ScopePatternValue::Many(vec![
+                "^/build\\.rs$".into(),
+                "/justfile".into()
+            ]))
         );
 
         tempdir.close()?;
         Ok(())
     }
 
+    #[cfg(feature = "ast-grep")]
     #[test]
-    fn test_scope_ast_grep_adds_scopes() -> Result<(), Box<dyn Error>> {
+    fn test_scope_ast_grep_inline() -> Result<(), Box<dyn Error>> {
         let tempdir = tempfile::tempdir()?;
+        // Use a subtable for ast_grep within the commit_scopes array entry
         std::fs::write(
             tempdir.path().join(".koji.toml"),
-            "[[scope_ast_grep]]\nscope = \"test\"\nlanguage = \"Rust\"\nrule = { kind = \"function_item\", has = { stopBy = \"end\", pattern = \"#[test]\" } }\nfiles = [\"**/*.rs\"]",
+            "[[commit_scopes]]\nname = \"test\"\ndescription = \"Test functions\"\n\n[commit_scopes.ast_grep]\nlanguage = \"Rust\"\nrule = { kind = \"function_item\" }\nfiles = [\"**/*.rs\"]\n",
         )?;
 
         let config = Config::new(Some(ConfigArgs {
@@ -455,7 +459,9 @@ mod tests {
         }))?;
 
         assert!(config.commit_scopes.contains_key("test"));
-        assert_eq!(config.scope_ast_grep.len(), 1);
+        let scope = config.commit_scopes.get("test").unwrap();
+        assert_eq!(scope.description, Some("Test functions".into()));
+        assert!(scope.ast_grep.is_some());
 
         tempdir.close()?;
         Ok(())
