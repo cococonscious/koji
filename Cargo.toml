@@ -13,7 +13,7 @@ license = "MIT"
 
 [features]
 default = []
-jj = ["dep:jj-lib", "dep:pollster"]
+jj = ["dep:jj-lib", "dep:pollster", "dep:whoami"]
 
 [[bin]]
 name = "koji"
@@ -41,12 +41,14 @@ gix = "0.80.0"
 # Optional jj support
 jj-lib = { version = "0.39", optional = true }
 pollster = { version = "0.4", optional = true }
+whoami = { version = "2.1.2", optional = true }
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.12.0"
 git2 = "0.20.3"
+serial_test = "3.5.0"
 
 [target.'cfg(not(windows))'.dev-dependencies]
 rexpect = "0.6.2"
