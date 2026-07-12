@@ -241,4 +241,4 @@ rule = { kind = "function_item", has = { stopBy = "end", pattern = "#[test]" } }
 
 **`patterns`** -- one or more regex strings matched against staged file paths (prefixed with `/`).
 
-**`ast_grep`** -- an [ast-grep](https://ast-grep.github.io/) rule. When any staged file matches both the `files` filter and the structural rule, this scope is pre-assigned. Requires the `ast-grep` feature (included by default). As a warning: the rule is read from the **staged blob only **.
+**`ast_grep`** -- an [ast-grep](https://ast-grep.github.io/) rule. When any staged file matches both the `files` filter and the structural rule, this scope is pre-assigned. Requires the `ast-grep` feature (included by default). As a warning: the rule is read from the **staged blob only**, so renamed and deleted paths are matched against their pre-change content.
