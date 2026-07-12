@@ -809,7 +809,7 @@ fn test_scope_autocompletion() -> Result<(), Box<dyn Error>> {
         CommitScope {
             name: "frontend".into(),
             description: Some("Frontend code".into()),
-            patterns: None,
+            patterns: vec![],
             #[cfg(feature = "ast-grep")]
             ast_grep: None,
         },
@@ -1092,7 +1092,7 @@ fn test_detect_scope_matches_from_scope_patterns() -> Result<(), Box<dyn Error>>
     }))?;
 
     let matches = detect_scope_matches(&gix_repo, &config)?;
-    assert_eq!(matches.suggested(), Some("config".into()));
+    assert_eq!(matches.suggested(), Some("config"));
 
     temp_dir.close()?;
     Ok(())

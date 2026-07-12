@@ -22,7 +22,7 @@ use crate::config::Config;
 struct StagedChange {
     path: PathBuf,
     #[cfg_attr(not(feature = "ast-grep"), allow(dead_code))]
-    id: Option<gix::ObjectId>,
+    id: gix::ObjectId,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -31,15 +31,12 @@ pub struct ScopeMatches {
 }
 
 impl ScopeMatches {
-    pub fn suggested(&self) -> Option<String> {
+    /// The scope to pre-assign, but only when exactly one scope matched.
+    /// With zero or multiple matches the choice is ambiguous, so callers
+    /// fall back to prompting.
+    pub fn suggested(&self) -> Option<&str> {
         match self.matches.as_slice() {
-            [first, rest @ ..] => {
-                // Warn the user that they have multiple matches (bad)
-                if !rest.is_empty() {
-                    eprintln!("More than one match was found. First: {first:?} Extra: {rest:?}");
-                }
-                Some(first.clone())
-            }
+            [only] => Some(only),
             _ => None,
         }
     }
@@ -52,17 +49,29 @@ struct CompiledAstGrepRules {
 }
 
 impl Config {
+    /// Compile every scope's path patterns once, so detection doesn't recompile
+    /// regexes for each staged file. Doubles as validation at config-load time.
+    fn compile_scope_patterns(&self) -> Result<Vec<(&str, Vec<Regex>)>> {
+        self.commit_scopes
+            .iter()
+            .filter(|(_, scope)| !scope.patterns.is_empty())
+            .map(|(name, scope)| {
+                let regexes = scope
+                    .patterns
+                    .iter()
+                    .map(|pattern| {
+                        Regex::new(pattern).with_context(|| {
+                            format!("invalid scope path regex for `{name}`: `{pattern}`")
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok((name.as_str(), regexes))
+            })
+            .collect()
+    }
+
     pub fn validate_scope_patterns(&self) -> Result<()> {
-        for (scope_name, scope) in &self.commit_scopes {
-            if let Some(patterns) = &scope.patterns {
-                for pattern in patterns.iter() {
-                    Regex::new(pattern).with_context(|| {
-                        format!("invalid scope path regex for `{scope_name}`: `{pattern}`")
-                    })?;
-                }
-            }
-        }
-        Ok(())
+        self.compile_scope_patterns().map(|_| ())
     }
 
     #[cfg(feature = "ast-grep")]
@@ -151,23 +160,15 @@ pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeM
         return Ok(ScopeMatches::default());
     }
 
+    let compiled_patterns = config.compile_scope_patterns()?;
     let mut matched_scopes = IndexSet::new();
 
     for change in &changed {
         let normalized_path = normalize_relative_path(&change.path);
 
-        for (scope_name, scope) in &config.commit_scopes {
-            if let Some(patterns) = &scope.patterns {
-                let is_match = patterns
-                    .iter()
-                    .map(Regex::new)
-                    .collect::<Result<Vec<_>, _>>()?
-                    .iter()
-                    .any(|re| re.is_match(&normalized_path));
-
-                if is_match {
-                    matched_scopes.insert(scope_name.clone());
-                }
+        for (scope_name, regexes) in &compiled_patterns {
+            if regexes.iter().any(|re| re.is_match(&normalized_path)) {
+                matched_scopes.insert(scope_name.to_string());
             }
         }
     }
@@ -191,7 +192,10 @@ fn staged_changes(repo: &Repository) -> Result<Vec<StagedChange>> {
         .head_tree_id_or_empty()
         .context("could not resolve HEAD tree")?;
 
-    let mut changes: IndexSet<(PathBuf, Option<gix::ObjectId>)> = IndexSet::new();
+    let mut changes: IndexSet<(PathBuf, gix::ObjectId)> = IndexSet::new();
+    let mut record = |location: &gix::bstr::BStr, id: gix::ObjectId| {
+        changes.insert((PathBuf::from(location.to_str_lossy().into_owned()), id));
+    };
     repo.tree_index_status(
         &head_tree_id,
         &index,
@@ -202,10 +206,7 @@ fn staged_changes(repo: &Repository) -> Result<Vec<StagedChange>> {
                 ChangeRef::Addition { location, id, .. }
                 | ChangeRef::Deletion { location, id, .. }
                 | ChangeRef::Modification { location, id, .. } => {
-                    changes.insert((
-                        PathBuf::from(location.to_str_lossy().into_owned()),
-                        Some(id.into_owned()),
-                    ));
+                    record(&location, id.into_owned());
                 }
                 ChangeRef::Rewrite {
                     source_location,
@@ -214,14 +215,8 @@ fn staged_changes(repo: &Repository) -> Result<Vec<StagedChange>> {
                     id,
                     ..
                 } => {
-                    changes.insert((
-                        PathBuf::from(source_location.to_str_lossy().into_owned()),
-                        Some(source_id.into_owned()),
-                    ));
-                    changes.insert((
-                        PathBuf::from(location.to_str_lossy().into_owned()),
-                        Some(id.into_owned()),
-                    ));
+                    record(&source_location, source_id.into_owned());
+                    record(&location, id.into_owned());
                 }
             }
 
@@ -266,10 +261,7 @@ fn detect_ast_grep_scopes(
             continue;
         }
 
-        let Some(id) = change.id else {
-            continue;
-        };
-        let Ok(blob) = repo.find_blob(id) else {
+        let Ok(blob) = repo.find_blob(change.id) else {
             continue;
         };
         let Ok(source) = std::str::from_utf8(&blob.data) else {
@@ -292,7 +284,7 @@ fn detect_ast_grep_scopes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{CommitScope, Config, ScopePatternValue};
+    use crate::config::{CommitScope, Config};
     use indexmap::IndexMap;
     use std::error::Error;
 
@@ -323,28 +315,36 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_validate_scope_patterns() -> Result<(), Box<dyn Error>> {
-        let tempdir = tempfile::tempdir()?;
-        let mut config = empty_config(tempdir.path().to_path_buf());
+    fn config_with_patterns(patterns: Vec<String>) -> Config {
+        let mut config = empty_config(PathBuf::from("."));
         config.commit_scopes.insert(
             "core".into(),
             CommitScope {
                 name: "core".into(),
                 description: None,
-                patterns: Some(ScopePatternValue::Many(vec![
-                    "^/crates/core/.*\\.rs$".into(),
-                    "^/src/.*\\.rs$".into(),
-                ])),
+                patterns,
                 #[cfg(feature = "ast-grep")]
                 ast_grep: None,
             },
         );
+        config
+    }
 
-        config.validate_scope_patterns()?;
+    #[test]
+    fn test_validate_scope_patterns_accepts_valid_regexes() {
+        let config = config_with_patterns(vec![
+            "^/crates/core/.*\\.rs$".into(),
+            "^/src/.*\\.rs$".into(),
+        ]);
+        assert!(config.validate_scope_patterns().is_ok());
+    }
 
-        tempdir.close()?;
-        Ok(())
+    #[test]
+    fn test_validate_scope_patterns_rejects_invalid_regex() {
+        // An unbalanced group is not a valid regex.
+        let config = config_with_patterns(vec!["^/src/(".into()]);
+        let err = config.validate_scope_patterns().unwrap_err();
+        assert!(err.to_string().contains("core"), "error names the scope");
     }
 
     #[test]
@@ -376,14 +376,14 @@ mod tests {
             CommitScope {
                 name: "core".into(),
                 description: None,
-                patterns: Some(ScopePatternValue::One("^/crates/core/.*\\.rs$".into())),
+                patterns: vec!["^/crates/core/.*\\.rs$".into()],
                 #[cfg(feature = "ast-grep")]
                 ast_grep: None,
             },
         );
 
         let matches = detect_scope_matches(&gix_repo, &config)?;
-        assert_eq!(matches.suggested(), Some("core".into()));
+        assert_eq!(matches.suggested(), Some("core"));
 
         tempdir.close()?;
         Ok(())
@@ -407,37 +407,12 @@ mod tests {
         index.write()?;
 
         let mut config = empty_config(tempdir.path().to_path_buf());
-        config.commit_scopes.insert(
-            "test".into(),
-            CommitScope {
-                name: "test".into(),
-                description: None,
-                patterns: None,
-                ast_grep: Some(ast_grep_config::SerializableRuleConfig {
-                    core: ast_grep_config::SerializableRuleCore {
-                        rule: ast_grep_config::from_str("pattern: fn $NAME() {}")?,
-                        constraints: None,
-                        transform: None,
-                        utils: None,
-                        fix: None,
-                    },
-                    id: String::new(),
-                    language: SupportLang::Rust,
-                    rewriters: None,
-                    message: String::new(),
-                    note: None,
-                    severity: ast_grep_config::Severity::Hint,
-                    labels: None,
-                    files: None,
-                    ignores: None,
-                    url: None,
-                    metadata: None,
-                }),
-            },
-        );
+        config
+            .commit_scopes
+            .insert("test".into(), function_scope("test", None));
 
         let matches = detect_scope_matches(&gix_repo, &config)?;
-        assert_eq!(matches.suggested(), Some("test".into()));
+        assert_eq!(matches.suggested(), Some("test"));
 
         tempdir.close()?;
         Ok(())
@@ -463,7 +438,7 @@ mod tests {
         CommitScope {
             name: name.into(),
             description: None,
-            patterns: None,
+            patterns: vec![],
             ast_grep: Some(ast_grep),
         }
     }
@@ -494,7 +469,7 @@ mod tests {
         let matches = detect_scope_matches(&gix_repo, &config)?;
         assert_eq!(
             matches.suggested(),
-            Some("test".into()),
+            Some("test"),
             "should match on staged content even though the worktree copy no longer matches"
         );
 
@@ -574,7 +549,7 @@ mod tests {
         let matches = detect_scope_matches(&gix_repo, &config)?;
         assert_eq!(
             matches.suggested(),
-            Some("test".into()),
+            Some("test"),
             "a rule filtered on the old path should still match the renamed file's staged content"
         );
 
@@ -615,7 +590,7 @@ mod tests {
         let matches = detect_scope_matches(&gix_repo, &config)?;
         assert_eq!(
             matches.suggested(),
-            Some("test".into()),
+            Some("test"),
             "a staged deletion should still match against the removed content"
         );
 

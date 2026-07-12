@@ -38,8 +38,9 @@ pub struct CommitScope {
     pub description: Option<String>,
 
     /// Regex patterns matched against staged file paths (prefixed with `/`).
-    #[serde(default)]
-    pub patterns: Option<ScopePatternValue>,
+    /// In TOML this may be given as a single string or a list of strings.
+    #[serde(default, deserialize_with = "string_or_seq")]
+    pub patterns: Vec<String>,
 
     /// AST-grep rule that pre-assigns this scope when it matches staged file content.
     #[cfg(feature = "ast-grep")]
@@ -47,14 +48,8 @@ pub struct CommitScope {
     pub ast_grep: Option<ast_grep_config::SerializableRuleConfig<ast_grep_language::SupportLang>>,
 }
 
-impl PartialEq for CommitScope {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.description == other.description
-            && self.patterns == other.patterns
-    }
-}
-
+// `SerializableRuleConfig` implements neither `Debug` nor `PartialEq`, so we can't
+// derive `Debug` for `CommitScope` (needed because `Config` derives it).
 impl fmt::Debug for CommitScope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CommitScope")
@@ -65,20 +60,22 @@ impl fmt::Debug for CommitScope {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(untagged)]
-pub enum ScopePatternValue {
-    One(String),
-    Many(Vec<String>),
-}
-
-impl ScopePatternValue {
-    pub fn iter(&self) -> Box<dyn Iterator<Item = &str> + '_> {
-        match self {
-            Self::One(pattern) => Box::new(std::iter::once(pattern.as_str())),
-            Self::Many(patterns) => Box::new(patterns.iter().map(String::as_str)),
-        }
+/// Accept either a single string or a list of strings for a `Vec<String>` field.
+fn string_or_seq<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        One(String),
+        Many(Vec<String>),
     }
+
+    Ok(match OneOrMany::deserialize(deserializer)? {
+        OneOrMany::One(pattern) => vec![pattern],
+        OneOrMany::Many(patterns) => patterns,
+    })
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -423,19 +420,10 @@ mod tests {
 
         let core = config.commit_scopes.get("core").unwrap();
         assert_eq!(core.description, Some("Core crate".into()));
-        assert_eq!(
-            core.patterns,
-            Some(ScopePatternValue::One("/crates/core/**/*.rs".into()))
-        );
+        assert_eq!(core.patterns, vec!["/crates/core/**/*.rs".to_string()]);
 
         let build = config.commit_scopes.get("build").unwrap();
-        assert_eq!(
-            build.patterns,
-            Some(ScopePatternValue::Many(vec![
-                "^/build\\.rs$".into(),
-                "/justfile".into()
-            ]))
-        );
+        assert_eq!(build.patterns, vec!["^/build\\.rs$", "/justfile"]);
 
         tempdir.close()?;
         Ok(())
