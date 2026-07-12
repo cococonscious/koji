@@ -36,6 +36,13 @@ fn get_skip_hint() -> &'static str {
     "<esc> or <return> to skip"
 }
 
+/// Print a prompt line as if the user had already answered it, so a
+/// pre-assigned scope from ast-grep/pattern matching is still visible
+/// instead of silently skipping the prompt.
+fn print_answered_scope_prompt(scope: &str) {
+    println!("\x1b[1mWhat's the scope of this change?\x1b[0m \x1b[90m{scope}\x1b[0m");
+}
+
 fn get_render_config() -> RenderConfig<'static> {
     RenderConfig {
         prompt: StyleSheet::new().with_attr(Attributes::BOLD),
@@ -264,6 +271,7 @@ impl Config {
         // If we're able to match then... yay!
         // Only valid if ONE scope was matched.
         if let Some(scope) = scope_matches.suggested() {
+            print_answered_scope_prompt(&scope);
             return Ok(Some(scope));
         }
 

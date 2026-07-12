@@ -65,8 +65,6 @@ impl fmt::Debug for CommitScope {
     }
 }
 
-/// A wrapper around the ast-grep rule config, with a manual Debug impl.
-#[cfg(feature = "ast-grep")]
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ScopePatternValue {

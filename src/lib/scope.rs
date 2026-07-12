@@ -4,13 +4,26 @@ use gix::diff::index::ChangeRef;
 use gix::Repository;
 use indexmap::IndexSet;
 use regex::Regex;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "ast-grep")]
+use std::collections::HashMap;
+
+#[cfg(feature = "ast-grep")]
 use ast_grep_config::{GlobalRules, RuleCollection, RuleConfig};
+#[cfg(feature = "ast-grep")]
 use ast_grep_language::{LanguageExt, SupportLang};
 
 use crate::config::Config;
+
+/// A staged change to a single path, along with the blob id whose content
+/// represents that change (the index-side blob for additions/modifications,
+/// the HEAD-side blob for deletions).
+struct StagedChange {
+    path: PathBuf,
+    #[cfg_attr(not(feature = "ast-grep"), allow(dead_code))]
+    id: Option<gix::ObjectId>,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ScopeMatches {
@@ -32,6 +45,7 @@ impl ScopeMatches {
     }
 }
 
+#[cfg(feature = "ast-grep")]
 struct CompiledAstGrepRules {
     rules: RuleCollection<SupportLang>,
     ids_to_scope: HashMap<String, String>,
@@ -51,10 +65,12 @@ impl Config {
         Ok(())
     }
 
+    #[cfg(feature = "ast-grep")]
     pub fn validate_ast_grep_rules(&self) -> Result<()> {
         self.compile_ast_grep_rules().map(|_| ())
     }
 
+    #[cfg(feature = "ast-grep")]
     fn compile_ast_grep_rules(&self) -> Result<CompiledAstGrepRules> {
         let globals = GlobalRules::default();
         let mut ids_to_scope = HashMap::new();
@@ -130,15 +146,15 @@ pub fn stage_tracked_changes(repo: &Repository) -> Result<()> {
 }
 
 pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeMatches> {
-    let changed_paths = staged_paths(repo)?;
-    if changed_paths.is_empty() {
+    let changed = staged_changes(repo)?;
+    if changed.is_empty() {
         return Ok(ScopeMatches::default());
     }
 
     let mut matched_scopes = IndexSet::new();
 
-    for relative_path in &changed_paths {
-        let normalized_path = normalize_relative_path(relative_path);
+    for change in &changed {
+        let normalized_path = normalize_relative_path(&change.path);
 
         for (scope_name, scope) in &config.commit_scopes {
             if let Some(patterns) = &scope.patterns {
@@ -156,12 +172,12 @@ pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeM
         }
     }
 
-    let workdir = repo
-        .workdir()
-        .context("could not determine repository workdir")?;
-    let ast_scopes = detect_ast_grep_scopes(config, workdir, &changed_paths)?;
-    for scope in ast_scopes {
-        matched_scopes.insert(scope);
+    #[cfg(feature = "ast-grep")]
+    {
+        let ast_scopes = detect_ast_grep_scopes(repo, config, &changed)?;
+        for scope in ast_scopes {
+            matched_scopes.insert(scope);
+        }
     }
 
     Ok(ScopeMatches {
@@ -169,13 +185,13 @@ pub fn detect_scope_matches(repo: &Repository, config: &Config) -> Result<ScopeM
     })
 }
 
-fn staged_paths(repo: &Repository) -> Result<Vec<PathBuf>> {
+fn staged_changes(repo: &Repository) -> Result<Vec<StagedChange>> {
     let index = repo.index_or_empty().context("could not read index")?;
     let head_tree_id = repo
         .head_tree_id_or_empty()
         .context("could not resolve HEAD tree")?;
 
-    let mut paths = IndexSet::new();
+    let mut changes: IndexSet<(PathBuf, Option<gix::ObjectId>)> = IndexSet::new();
     repo.tree_index_status(
         &head_tree_id,
         &index,
@@ -183,18 +199,29 @@ fn staged_paths(repo: &Repository) -> Result<Vec<PathBuf>> {
         gix::status::tree_index::TrackRenames::Disabled,
         |change, _, _| {
             match change {
-                ChangeRef::Addition { location, .. }
-                | ChangeRef::Deletion { location, .. }
-                | ChangeRef::Modification { location, .. } => {
-                    paths.insert(PathBuf::from(location.to_str_lossy().into_owned()));
+                ChangeRef::Addition { location, id, .. }
+                | ChangeRef::Deletion { location, id, .. }
+                | ChangeRef::Modification { location, id, .. } => {
+                    changes.insert((
+                        PathBuf::from(location.to_str_lossy().into_owned()),
+                        Some(id.into_owned()),
+                    ));
                 }
                 ChangeRef::Rewrite {
                     source_location,
+                    source_id,
                     location,
+                    id,
                     ..
                 } => {
-                    paths.insert(PathBuf::from(source_location.to_str_lossy().into_owned()));
-                    paths.insert(PathBuf::from(location.to_str_lossy().into_owned()));
+                    changes.insert((
+                        PathBuf::from(source_location.to_str_lossy().into_owned()),
+                        Some(source_id.into_owned()),
+                    ));
+                    changes.insert((
+                        PathBuf::from(location.to_str_lossy().into_owned()),
+                        Some(id.into_owned()),
+                    ));
                 }
             }
 
@@ -203,7 +230,10 @@ fn staged_paths(repo: &Repository) -> Result<Vec<PathBuf>> {
     )
     .context("could not diff HEAD tree against index")?;
 
-    Ok(paths.into_iter().collect())
+    Ok(changes
+        .into_iter()
+        .map(|(path, id)| StagedChange { path, id })
+        .collect())
 }
 
 fn normalize_relative_path(path: &Path) -> String {
@@ -216,10 +246,11 @@ fn normalize_relative_path(path: &Path) -> String {
     }
 }
 
+#[cfg(feature = "ast-grep")]
 fn detect_ast_grep_scopes(
+    repo: &Repository,
     config: &Config,
-    workdir: &Path,
-    changed_paths: &[PathBuf],
+    changed: &[StagedChange],
 ) -> Result<Vec<String>> {
     if config.commit_scopes.values().all(|s| s.ast_grep.is_none()) {
         return Ok(Vec::new());
@@ -229,19 +260,24 @@ fn detect_ast_grep_scopes(
 
     let mut matched_scopes = IndexSet::new();
 
-    for relative_path in changed_paths {
-        let applicable_rules = compiled_rules.rules.for_path(relative_path);
+    for change in changed {
+        let applicable_rules = compiled_rules.rules.for_path(&change.path);
         if applicable_rules.is_empty() {
             continue;
         }
 
-        let full_path = workdir.join(relative_path);
-        let Ok(source) = std::fs::read_to_string(&full_path) else {
+        let Some(id) = change.id else {
+            continue;
+        };
+        let Ok(blob) = repo.find_blob(id) else {
+            continue;
+        };
+        let Ok(source) = std::str::from_utf8(&blob.data) else {
             continue;
         };
 
         for rule in applicable_rules {
-            let root = rule.language.ast_grep(&source);
+            let root = rule.language.ast_grep(source);
             if root.root().find(&rule.matcher).is_some() {
                 if let Some(scope) = compiled_rules.ids_to_scope.get(&rule.id) {
                     matched_scopes.insert(scope.clone());
@@ -300,6 +336,7 @@ mod tests {
                     "^/crates/core/.*\\.rs$".into(),
                     "^/src/.*\\.rs$".into(),
                 ])),
+                #[cfg(feature = "ast-grep")]
                 ast_grep: None,
             },
         );
@@ -340,6 +377,7 @@ mod tests {
                 name: "core".into(),
                 description: None,
                 patterns: Some(ScopePatternValue::One("^/crates/core/.*\\.rs$".into())),
+                #[cfg(feature = "ast-grep")]
                 ast_grep: None,
             },
         );
@@ -351,6 +389,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "ast-grep")]
     #[test]
     fn test_detect_scope_matches_from_ast_grep_rules() -> Result<(), Box<dyn Error>> {
         let tempdir = tempfile::tempdir()?;
@@ -399,6 +438,186 @@ mod tests {
 
         let matches = detect_scope_matches(&gix_repo, &config)?;
         assert_eq!(matches.suggested(), Some("test".into()));
+
+        tempdir.close()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "ast-grep")]
+    fn function_scope(name: &str, file_globs: Option<Vec<String>>) -> CommitScope {
+        let files_yaml = match &file_globs {
+            Some(globs) => {
+                let items: Vec<String> = globs.iter().map(|g| format!("  - '{g}'")).collect();
+                format!("files:\n{}\n", items.join("\n"))
+            }
+            None => String::new(),
+        };
+        let yaml = format!(
+            "id: test-rule\nlanguage: Rust\nrule:\n  pattern: fn $NAME() {{}}\n{files_yaml}"
+        );
+        let ast_grep = ast_grep_config::from_str::<
+            ast_grep_config::SerializableRuleConfig<SupportLang>,
+        >(&yaml)
+        .unwrap();
+
+        CommitScope {
+            name: name.into(),
+            description: None,
+            patterns: None,
+            ast_grep: Some(ast_grep),
+        }
+    }
+
+    #[cfg(feature = "ast-grep")]
+    #[test]
+    fn test_ast_grep_matches_staged_blob_not_worktree() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        let repo = git2::Repository::init(tempdir.path())?;
+        let gix_repo = gix::discover(tempdir.path())?;
+
+        std::fs::create_dir_all(tempdir.path().join("src"))?;
+        std::fs::write(tempdir.path().join("src/lib.rs"), "fn matches() {}\n")?;
+
+        let mut index = repo.index()?;
+        index.add_path(Path::new("src/lib.rs"))?;
+        index.write()?;
+
+        // Overwrite the worktree copy with content that would NOT match
+        // after staging, so the staged blob is the only thing that matches.
+        std::fs::write(tempdir.path().join("src/lib.rs"), "no match here\n")?;
+
+        let mut config = empty_config(tempdir.path().to_path_buf());
+        config
+            .commit_scopes
+            .insert("test".into(), function_scope("test", None));
+
+        let matches = detect_scope_matches(&gix_repo, &config)?;
+        assert_eq!(
+            matches.suggested(),
+            Some("test".into()),
+            "should match on staged content even though the worktree copy no longer matches"
+        );
+
+        tempdir.close()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "ast-grep")]
+    #[test]
+    fn test_ast_grep_ignores_unstaged_worktree_edits() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        let repo = git2::Repository::init(tempdir.path())?;
+        let gix_repo = gix::discover(tempdir.path())?;
+
+        std::fs::create_dir_all(tempdir.path().join("src"))?;
+        std::fs::write(tempdir.path().join("src/lib.rs"), "no match here\n")?;
+
+        let mut index = repo.index()?;
+        index.add_path(Path::new("src/lib.rs"))?;
+        index.write()?;
+
+        // Edit the worktree copy to something that WOULD match, without staging it.
+        std::fs::write(tempdir.path().join("src/lib.rs"), "fn matches() {}\n")?;
+
+        let mut config = empty_config(tempdir.path().to_path_buf());
+        config
+            .commit_scopes
+            .insert("test".into(), function_scope("test", None));
+
+        let matches = detect_scope_matches(&gix_repo, &config)?;
+        assert_eq!(
+            matches.suggested(),
+            None,
+            "unstaged worktree edits must not influence scope detection"
+        );
+
+        tempdir.close()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "ast-grep")]
+    #[test]
+    fn test_ast_grep_matches_renamed_file_old_path_filter() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        let repo = git2::Repository::init(tempdir.path())?;
+
+        std::fs::create_dir_all(tempdir.path().join("tests"))?;
+        std::fs::write(tempdir.path().join("tests/a.rs"), "fn matches() {}\n")?;
+
+        let mut index = repo.index()?;
+        index.add_path(Path::new("tests/a.rs"))?;
+        let tree_id = index.write_tree()?;
+        index.write()?;
+        let tree = repo.find_tree(tree_id)?;
+        let sig = git2::Signature::now("Tester", "test@example.com")?;
+        repo.commit(Some("HEAD"), &sig, &sig, "chore: initial", &tree, &[])?;
+
+        // Stage a rename: remove the old path, add the new path with the same content.
+        std::fs::create_dir_all(tempdir.path().join("src"))?;
+        std::fs::rename(
+            tempdir.path().join("tests/a.rs"),
+            tempdir.path().join("src/a.rs"),
+        )?;
+        let mut index = repo.index()?;
+        index.remove_path(Path::new("tests/a.rs"))?;
+        index.add_path(Path::new("src/a.rs"))?;
+        index.write()?;
+
+        let gix_repo = gix::discover(tempdir.path())?;
+
+        let mut config = empty_config(tempdir.path().to_path_buf());
+        config.commit_scopes.insert(
+            "test".into(),
+            function_scope("test", Some(vec!["tests/**".into()])),
+        );
+
+        let matches = detect_scope_matches(&gix_repo, &config)?;
+        assert_eq!(
+            matches.suggested(),
+            Some("test".into()),
+            "a rule filtered on the old path should still match the renamed file's staged content"
+        );
+
+        tempdir.close()?;
+        Ok(())
+    }
+
+    #[cfg(feature = "ast-grep")]
+    #[test]
+    fn test_ast_grep_matches_staged_deletion() -> Result<(), Box<dyn Error>> {
+        let tempdir = tempfile::tempdir()?;
+        let repo = git2::Repository::init(tempdir.path())?;
+
+        std::fs::create_dir_all(tempdir.path().join("src"))?;
+        std::fs::write(tempdir.path().join("src/lib.rs"), "fn matches() {}\n")?;
+
+        let mut index = repo.index()?;
+        index.add_path(Path::new("src/lib.rs"))?;
+        let tree_id = index.write_tree()?;
+        index.write()?;
+        let tree = repo.find_tree(tree_id)?;
+        let sig = git2::Signature::now("Tester", "test@example.com")?;
+        repo.commit(Some("HEAD"), &sig, &sig, "chore: initial", &tree, &[])?;
+
+        // Stage the deletion and remove the file from the worktree too.
+        std::fs::remove_file(tempdir.path().join("src/lib.rs"))?;
+        let mut index = repo.index()?;
+        index.remove_path(Path::new("src/lib.rs"))?;
+        index.write()?;
+
+        let gix_repo = gix::discover(tempdir.path())?;
+
+        let mut config = empty_config(tempdir.path().to_path_buf());
+        config
+            .commit_scopes
+            .insert("test".into(), function_scope("test", None));
+
+        let matches = detect_scope_matches(&gix_repo, &config)?;
+        assert_eq!(
+            matches.suggested(),
+            Some("test".into()),
+            "a staged deletion should still match against the removed content"
+        );
 
         tempdir.close()?;
         Ok(())

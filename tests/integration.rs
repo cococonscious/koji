@@ -1018,6 +1018,62 @@ fn test_scope_pattern_auto_assigns_scope() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn test_force_config_scopes_prints_pre_assigned_scope() -> Result<(), Box<dyn Error>> {
+    let (bin_path, temp_dir, repo) = setup_test_dir()?;
+    let config_temp_dir = setup_config_home()?;
+
+    fs::write(
+        temp_dir.path().join(".koji.toml"),
+        "force_config_scopes = true\n[[commit_scopes]]\nname = \"config\"\npatterns = \"/config\\\\.json$\"",
+    )?;
+    fs::write(temp_dir.path().join("config.json"), "abc")?;
+    git_add(&repo, ".")?;
+
+    let mut cmd = Command::new(bin_path);
+    cmd.env("NO_COLOR", "1")
+        .arg("-C")
+        .arg(temp_dir.path())
+        .arg("--stdout");
+
+    let mut process = spawn_command(cmd, Some(5000))?;
+
+    process.expect_commit_type()?;
+    process.send_line("feat")?;
+    process.flush()?;
+
+    // Only one scope matched, so the select prompt is skipped, but the
+    // pre-assigned scope must still be printed instead of being invisible.
+    process.expect_scope()?;
+    process.exp_string("config")?;
+
+    process.expect_summary()?;
+    process.send_line("wire pre-assigned scope")?;
+    process.flush()?;
+    process.expect_body()?;
+    process.send_line("")?;
+    process.flush()?;
+    process.expect_breaking()?;
+    process.send_line("N")?;
+    process.flush()?;
+    process.expect_issues()?;
+    process.send_line("N")?;
+    process.flush()?;
+
+    let _ = process.exp_string("feat(config): wire pre-assigned scope")?;
+    let eof_output = process.exp_eof();
+    let exitcode = process.process.wait()?;
+    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+
+    if !success {
+        panic!("Command exited non-zero, end of output: {eof_output:#?}");
+    }
+
+    temp_dir.close()?;
+    config_temp_dir.close()?;
+    Ok(())
+}
+
+#[test]
 fn test_detect_scope_matches_from_scope_patterns() -> Result<(), Box<dyn Error>> {
     let temp_dir = tempfile::tempdir()?;
     let repo = Repository::init(temp_dir.path())?;
