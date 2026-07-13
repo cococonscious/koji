@@ -9,6 +9,7 @@ use koji::answers::{get_extracted_answers, ExtractedAnswers};
 use koji::commit::{commit, generate_commit_msg, write_commit_msg};
 use koji::config::{Config, ConfigArgs};
 use koji::questions::{create_prompt, prompt_confirm};
+use koji::scope::{detect_scope_matches, stage_tracked_changes};
 use koji::status::{check_staging, StagingStatus};
 
 #[derive(Parser, Debug)]
@@ -193,10 +194,19 @@ fn main() -> Result<()> {
         sign,
         _user_config_path: None,
         _current_dir: Some(current_dir.clone()),
+        ..Default::default()
     }))?;
 
+    // When --all is set, stage tracked changes before anything else, so scope detection sees the ENTIRE diff.
+    // Afterwards, the commit step will re-stage idempotently.
+    if all {
+        stage_tracked_changes(&repo).context("failed to pre-stage tracked files")?;
+    }
+
+    let scope_matches = detect_scope_matches(&repo, &config)?;
+
     // Get answers from interactive prompt
-    let answers = create_prompt(commit_message, &config)?;
+    let answers = create_prompt(commit_message, &config, &scope_matches)?;
 
     // Get data necessary for a conventional commit
     let ExtractedAnswers {

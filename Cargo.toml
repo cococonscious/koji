@@ -19,6 +19,10 @@ path = "src/bin/main.rs"
 name = "koji"
 path = "src/lib/lib.rs"
 
+[features]
+default = ["ast-grep"]
+ast-grep = ["dep:ast-grep-config", "dep:ast-grep-language"]
+
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
@@ -29,16 +33,20 @@ emojis = "0.8"
 indexmap = "2.10"
 serde = { version = "1.0", features = ["derive"] }
 inquire = "0.9"
+regex = "1.12"
+thiserror = "2"
 clap_complete_command = { version = "0.6", features = ["nushell"]}
 config = { version = "0.15", features = ["toml"] }
 xdg = "3.0"
 gix = "0.80.0"
+ast-grep-config = { version = "0.42.1", optional = true }
+ast-grep-language = { version = "0.42.1", optional = true }
 
 [dev-dependencies]
+git2 = "0.20.4"
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.12.0"
-git2 = "0.20.3"
 
 [target.'cfg(not(windows))'.dev-dependencies]
 rexpect = "0.6.2"

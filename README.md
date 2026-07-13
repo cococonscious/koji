@@ -191,3 +191,54 @@ emoji = true
 issues = true
 ```
 
+#### `force_config_scopes`
+
+- Type: `bool`
+- Optional: `true`
+- Description: When `true`, the scope prompt becomes a selection list restricted to the configured `commit_scopes`. If a single scope is auto-detected from staged changes it is pre-selected automatically.
+```toml
+force_config_scopes = true
+```
+
+#### `allow_empty_scope`
+
+- Type: `bool`
+- Optional: `true`
+- Description: When `false`, a scope is required and cannot be left blank. Pressing `<esc>` without a detected scope will abort the commit. Defaults to `true`.
+```toml
+allow_empty_scope = false
+```
+
+#### `commit_scopes`
+
+- Type: `Vec<CommitScope>`
+- Optional: `true`
+- Description: A list of named commit scopes. Each scope can carry a human-readable `description` (For CLI use), path `patterns` for automatic detection, and an `ast_grep` rule for content-based detection.
+
+*For automatically assigning scopes based on the context of the change*
+
+```toml
+[[commit_scopes]]
+name = "core"
+description = "Changes to the core library"
+patterns = "/crates/core/**/*.rs"
+
+[[commit_scopes]]
+name = "build"
+patterns = ["^/build\\.rs$", "/justfile"]
+
+[[commit_scopes]]
+name = "test"
+description = "Test-only changes"
+patterns = "/tests/**"
+
+# In reference the above scope \/ (TOML is weird)
+[commit_scopes.ast_grep]
+language = "Rust"
+files = ["**/*.rs"]
+rule = { kind = "function_item", has = { stopBy = "end", pattern = "#[test]" } }
+```
+
+**`patterns`** -- one or more regex strings matched against staged file paths (prefixed with `/`).
+
+**`ast_grep`** -- an [ast-grep](https://ast-grep.github.io/) rule. When any staged file matches both the `files` filter and the structural rule, this scope is pre-assigned. Requires the `ast-grep` feature (included by default). As a warning: the rule is read from the **staged blob only**, so renamed and deleted paths are matched against their pre-change content.
