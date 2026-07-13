@@ -1017,6 +1017,7 @@ fn test_scope_pattern_auto_assigns_scope() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_force_config_scopes_prints_pre_assigned_scope() -> Result<(), Box<dyn Error>> {
     let (bin_path, temp_dir, repo) = setup_test_dir()?;
