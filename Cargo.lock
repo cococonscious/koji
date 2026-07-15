@@ -336,7 +336,7 @@ dependencies = [
  "config 0.14.1",
  "conventional_commit_parser",
  "edit",
- "git2",
+ "git2 0.20.4",
  "globset",
  "indexmap",
  "itertools",
@@ -859,9 +859,19 @@ dependencies = [
  "libc",
  "libgit2-sys",
  "log",
- "openssl-probe",
- "openssl-sys",
  "url",
+]
+
+[[package]]
+name = "git2"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddddbf932745a6be37109b6112d3ee09696106f848449069d3a57bba937ab82e"
+dependencies = [
+ "bitflags",
+ "libc",
+ "libgit2-sys",
+ "log",
 ]
 
 [[package]]
@@ -2183,7 +2193,7 @@ dependencies = [
  "conventional_commit_parser",
  "dirs",
  "emojis",
- "git2",
+ "git2 0.21.0",
  "gix",
  "indexmap",
  "inquire",
@@ -2217,15 +2227,13 @@ checksum = "6800badb6cb2082ffd7b6a67e6125bb39f18782f793520caee8cb8846be06112"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.18.3+1.9.2"
+version = "0.18.5+1.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9b3acc4b91781bb0b3386669d325163746af5f6e4f73e6d2d630e09a35f3487"
+checksum = "005d6ae6eac1912906073e069f7db60b1fa98e052a68227824afe3e3a1c59ca2"
 dependencies = [
  "cc",
  "libc",
- "libssh2-sys",
  "libz-sys",
- "openssl-sys",
  "pkg-config",
 ]
 
@@ -2244,20 +2252,6 @@ dependencies = [
  "bitflags",
  "libc",
  "redox_syscall",
-]
-
-[[package]]
-name = "libssh2-sys"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "220e4f05ad4a218192533b300327f5150e809b54c4ec83b5a1d91833601811b9"
-dependencies = [
- "cc",
- "libc",
- "libz-sys",
- "openssl-sys",
- "pkg-config",
- "vcpkg",
 ]
 
 [[package]]
@@ -2415,24 +2409,6 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
-
-[[package]]
-name = "openssl-probe"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
-
-[[package]]
-name = "openssl-sys"
-version = "0.9.111"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82cab2d520aa75e3c58898289429321eb788c3106963d0dc886ec7a5f4adc321"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
-]
 
 [[package]]
 name = "option-ext"
