@@ -16,7 +16,7 @@ jobs:
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4.4.0
+      - uses: googleapis/release-please-action@v4.4.1
         id: release-please
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
