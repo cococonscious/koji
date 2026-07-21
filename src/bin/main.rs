@@ -95,8 +95,19 @@ struct Args {
     )]
     sign: Option<bool>,
 
-    #[arg(short, long, help = "Stage all tracked modified or deleted files")]
+    #[arg(
+        short,
+        long,
+        help = "Stage all changes (modified, deleted, and untracked files)"
+    )]
     all: bool,
+
+    #[arg(
+        long,
+        help = "Bypass the pre-commit and post-commit git hooks",
+        conflicts_with = "hook"
+    )]
+    no_verify: bool,
 
     #[arg(
         short = 'y',
@@ -134,6 +145,7 @@ fn main() -> Result<()> {
         issues,
         sign,
         all,
+        no_verify,
         yes,
         current_workdir,
     } = Args::parse();
@@ -167,7 +179,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // --hook and --stdout don't create commits; --all stages tracked files automatically
+    // --hook and --stdout don't create commits; --all stages everything (incl. untracked)
     if !hook && !stdout && !all {
         match check_staging(&repo)? {
             StagingStatus::Empty => {
@@ -250,7 +262,7 @@ fn main() -> Result<()> {
             update_files: false,
         };
 
-        commit(current_dir, options)?;
+        commit(current_dir, options, no_verify)?;
     }
 
     Ok(())
