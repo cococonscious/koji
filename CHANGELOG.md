@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## [3.5.0](https://github.com/cococonscious/koji/compare/v3.4.0...v3.5.0) (2026-07-30)
+
+
+### Features
+
+* configurable scopes with semantic matching ([#179](https://github.com/cococonscious/koji/issues/179)) ([8e41c94](https://github.com/cococonscious/koji/commit/8e41c94770baa426b3d9feac4a46ccb1ef3134a3))
+
+
+### Bug Fixes
+
+* **deps:** pin and upgrade deps (cargo & gh actions) ([f28ced1](https://github.com/cococonscious/koji/commit/f28ced147de8afab51ecc6e94eb2d7254e37b778))
+
 ## [3.4.0](https://github.com/cococonscious/koji/compare/v3.3.1...v3.4.0) (2026-02-25)
 
 
