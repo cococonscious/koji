@@ -356,7 +356,10 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
 
     let commit = get_last_commit(&repo)?;
     assert_eq!(commit.summary(), Ok(Some("docs(cargo)!: rename project")));
-    assert_eq!(commit.body(), Ok(Some("Renamed the project to a new name.")));
+    assert_eq!(
+        commit.body(),
+        Ok(Some("Renamed the project to a new name."))
+    );
 
     temp_dir.close()?;
     config_temp_dir.close()?;
