@@ -6,6 +6,9 @@
     "schedule:weekly"
   ],
   "prConcurrentLimit": 0,
+  "pre-commit": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "groupName": "all non-major dependencies",

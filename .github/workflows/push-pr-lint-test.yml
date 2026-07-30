@@ -23,14 +23,10 @@ jobs:
         os:
           # Linux
           - ubuntu-latest
-          # macOS ARM64 - Tahoe (macOS 26 beta)
-          - macos-26
-          # macOS ARM64 - Sequoia (macOS 15)
-          - macos-15
-          # macOS ARM64 - Sonoma (macOS 14)
-          - macos-14
-          # macOS Intel - Sonoma (macOS 15 Intel)
-          - macos-15-intel
+          # macOS
+          - macos-latest
+          # macOS Intel
+          - macos-26-intel
           # Windows Server
           - windows-latest
     steps:
