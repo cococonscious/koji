@@ -43,7 +43,7 @@ ast-grep-config = { version = "0.42.1", optional = true }
 ast-grep-language = { version = "0.42.1", optional = true }
 
 [dev-dependencies]
-git2 = "0.20.4"
+git2 = "0.21.0"
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.12.0"
