@@ -6,7 +6,7 @@ use koji::questions::ScopeAutocompleter;
 use koji::scope::detect_scope_matches;
 #[cfg(not(target_os = "windows"))]
 use rexpect::{
-    process::wait,
+    process::WaitStatus,
     session::{spawn_command, PtySession},
 };
 use std::fs;
@@ -162,8 +162,8 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
@@ -172,11 +172,11 @@ fn test_everything_correct() -> Result<(), Box<dyn Error>> {
     let commit = get_last_commit(&repo)?;
     assert_eq!(
         commit.summary(),
-        Some("feat(config)!: refactor config pairs")
+        Ok(Some("feat(config)!: refactor config pairs"))
     );
     assert_eq!(
         commit.body(),
-        Some("Removed and added a config pair each\nNecessary for future compatibility.\n\ncloses #1\nBREAKING CHANGE: Something can't be configured anymore")
+        Ok(Some("Removed and added a config pair each\nNecessary for future compatibility.\n\ncloses #1\nBREAKING CHANGE: Something can't be configured anymore"))
     );
 
     temp_dir.close()?;
@@ -224,8 +224,8 @@ fn test_hook_correct() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
@@ -289,8 +289,8 @@ fn test_stdout_correct() -> Result<(), Box<dyn Error>> {
 
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
@@ -347,16 +347,16 @@ fn test_empty_breaking_text_correct() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
-    assert_eq!(commit.summary(), Some("docs(cargo)!: rename project"));
-    assert_eq!(commit.body(), Some("Renamed the project to a new name."));
+    assert_eq!(commit.summary(), Ok(Some("docs(cargo)!: rename project")));
+    assert_eq!(commit.body(), Ok(Some("Renamed the project to a new name.")));
 
     temp_dir.close()?;
     config_temp_dir.close()?;
@@ -530,8 +530,8 @@ fn test_xdg_config() -> Result<(), Box<dyn Error>> {
 
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {:?}", eof_output);
@@ -619,15 +619,15 @@ fn test_confirmation_accept() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
     }
 
     let commit = get_last_commit(&repo)?;
-    assert_eq!(commit.summary(), Some("fix: patch a bug"));
+    assert_eq!(commit.summary(), Ok(Some("fix: patch a bug")));
 
     temp_dir.close()?;
     config_temp_dir.close()?;
@@ -751,8 +751,8 @@ fn test_confirmation_decline() -> Result<(), Box<dyn Error>> {
     process.flush()?;
     let eof_output = process.exp_eof();
 
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
@@ -760,7 +760,7 @@ fn test_confirmation_decline() -> Result<(), Box<dyn Error>> {
 
     // Verify the last commit is still the initial one (no new commit was made)
     let commit = get_last_commit(&repo)?;
-    assert_eq!(commit.summary(), Some("docs(readme): initial draft"));
+    assert_eq!(commit.summary(), Ok(Some("docs(readme): initial draft")));
 
     temp_dir.close()?;
     config_temp_dir.close()?;
@@ -1005,8 +1005,8 @@ fn test_scope_pattern_auto_assigns_scope() -> Result<(), Box<dyn Error>> {
 
     let _ = process.exp_string("feat(config): wire auto scope")?;
     let eof_output = process.exp_eof();
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
@@ -1062,8 +1062,8 @@ fn test_force_config_scopes_prints_pre_assigned_scope() -> Result<(), Box<dyn Er
 
     let _ = process.exp_string("feat(config): wire pre-assigned scope")?;
     let eof_output = process.exp_eof();
-    let exitcode = process.process.wait()?;
-    let success = matches!(exitcode, wait::WaitStatus::Exited(_, 0));
+    let exitcode = process.process().wait()?;
+    let success = matches!(exitcode, WaitStatus::Exited(_, 0));
 
     if !success {
         panic!("Command exited non-zero, end of output: {eof_output:#?}");
