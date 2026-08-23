@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "ast-grep-config"
-version = "0.45.0"
+version = "0.45.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e04db0f8c561a72c8f1332822e28431702826e6578b6b30b02e796ff70e8b0a4"
+checksum = "b59f3f00667ab0b586d900b4d23b13d89f631317a85edd783376e2d87a3761ad"
 dependencies = [
  "ast-grep-core",
  "bit-set",
@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "ast-grep-core"
-version = "0.45.0"
+version = "0.45.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f378c151f97e66921165bcfd962793cb85f86a7453bb20598913292c96a09f1"
+checksum = "442c9ecc111490ac358901dea6baf854baab8b298b982126d4391ba283389d9d"
 dependencies = [
  "bit-set",
  "regex",
@@ -1519,7 +1519,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a791e6620676a875f362f3156ed213e73ca099a09bf992c18812abe65cc37b1"
 dependencies = [
  "bstr",
- "hashbrown 0.17.1",
+ "hashbrown 0.16.1",
 ]
 
 [[package]]
