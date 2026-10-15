@@ -40,7 +40,7 @@ config = { version = "0.15.25", features = ["toml"] }
 xdg = "3.0"
 gix = "0.86.0"
 ast-grep-config = { version = "0.45.0", optional = true }
-ast-grep-language = { version = "0.45.0", optional = true }
+ast-grep-language = { version = "0.51.0", optional = true }
 
 [dev-dependencies]
 git2 = "0.21.0"
